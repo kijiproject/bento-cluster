@@ -1,0 +1,5 @@
+The hdfs-site.xml used by bento-cluster. You can edit this file to
+configure the behavior of your HDFS cluster. Outright removing one of the
+variables defined here may cause errors in the clusters started by
+bento-cluster.
+

@@ -1,0 +1,362 @@
+#!/usr/bin/env bash
+#
+#   (c) Copyright 2012 WibiData, Inc.
+#
+#   See the NOTICE file distributed with this work for additional
+#   information regarding copyright ownership.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+#   The bento script allows users to start and stop the HDFS, HBase,
+#   and MapReduce clusters managed by bento-cluster. For full usage information,
+#   use:
+#
+#   bash> $BENTO_CLUSTER_HOME/bin/bento help
+#
+
+bin=`dirname $0`
+bin=`cd ${bin} && pwd`
+
+# Configure the environment to use the distributions managed by bento-cluster.
+source "${bin}/bento-env.sh" &> /dev/null
+
+# Any extra jars you want to be on the classpath of the started clusters can be
+# specified here.
+BENTO_CLASSPATH=${BENTO_CLASSPATH:-""}
+
+# Any arguments you want to pass to the bento-cluster jvm can be specified here.
+BENTO_JAVA_OPTS=${BENTO_JAVA_OPTS:-""}
+
+# An existing set of directories to use for the java.library.path property should
+# be set with JAVA_LIBRARY_PATH.
+JAVA_LIBRARY_PATH=${JAVA_LIBRARY_PATH:-""}
+
+# The directory that holds cluster state.
+STATE_DIR="$BENTO_CLUSTER_HOME/state"
+# Locations of log and pid files.
+BENTO_LOG_FILE="${STATE_DIR}/bento-cluster.log"
+BENTO_PID_FILE="${STATE_DIR}/bento-cluster.pid"
+# A directory containing symlinks to the -site.xml files used by bento-cluster's
+# Hadoop clusters.
+CLUSTER_CONF_DIR="${BENTO_CLUSTER_HOME}/cluster-conf"
+
+java_opts=
+
+function print_tool_usage() {
+  echo "The bento script can start and stop the HDFS, MapReduce, and HBase clusters"
+  echo "managed by bento-cluster."
+  echo
+  echo "USAGE"
+  echo
+  echo "  bento (start|stop)"
+  echo
+  echo "COMMANDS"
+  echo
+  echo "  help          - Display this help message. Use --verbose for more information."
+  echo "  start         - Starts HDFS, MapReduce, and HBase clusters managed by bento-cluster."
+  echo "  stop          - Stops HDFS, MapReduce, and HBase clusters managed by bento-cluster."
+  echo "  classpath     - Print the classpath used to run bento-cluster."
+  echo
+}
+
+function print_env_usage() {
+  echo
+  echo "ENVIRONMENT VARIABLES"
+  echo
+  echo "  Users can set several environment variables to change the behavior of the bento script and"
+  echo "  the clusters managed by bento-cluster. These include:"
+  echo
+  echo "  BENTO_CLASSPATH     Should contain a colon-seperated list of paths to client libraries"
+  echo "                      to place on the classpath of the clusters run. This is useful when"
+  echo "                      you want to make libraries available to all code run on the clusters"
+  echo "                      (such as in MapReduce tasks). The libraries specified in"
+  echo "                      BENTO_CLASSPATH will be placed first on the classpath so that they"
+  echo "                      will take precedence over libraries provided by bento-cluster."
+  echo "                      By default BENTO_CLASSPATH is empty."
+  echo
+  echo "  BENTO_JAVA_OPTS     Should contain extra arguments to pass to the JVM used to run"
+  echo "                      bento-cluster. By default, BENTO_JAVA_OPTS is empty."
+  echo
+  echo "  JAVA_LIBRARY_PATH   Should contain a colon-seperated list of paths to additional native"
+  echo "                      libraries to pass to the JVM (through the java.library.path"
+  echo "                      property). Note the bento script will always pass the native libraries"
+  echo "                      included with bento-cluster's Hadoop distribution to the JVM. By"
+  echo "                      default JAVA_LIBRARY_PATH is empty."
+}
+
+if [ -z $1 ]; then
+    print_tool_usage
+    exit 0
+fi
+
+function create_missing_dir() {
+  dirname=$1
+
+  # Create the directory identified if it does not exist already.
+  if [ ! -z "$dirname" -a ! -d "$dirname" ]; then
+    if [ -e "$dirname" ]; then
+      echo "Warning: $dirname exists but is not a directory"
+      return 1
+    fi
+    mkdir -p $dirname
+  fi
+}
+
+# Removes classpath entries that match the given regexp (partial match, not full
+# match).
+function remove_classpath_entries() {
+  local cp=$1
+  local regex=$2
+
+  echo $cp | sed "s/[^:]*$regex[^:]*/::/g" | sed 's/::*/:/g'
+  return 0
+}
+
+# Helper to build classpaths correctly
+function append_path() {
+  if [ -z "$1" ]; then
+    echo $2
+  else
+    echo $1:$2
+  fi
+}
+
+# Scrubs classpaths of a given jar. Mutate will dig into *s, only mutating them
+# if it finds the given jar.
+# mutate_classpath scrubme.jar "$(hadoop classpath)"
+function mutate_classpath () {
+
+    local mutated_classpath
+    local jar_to_scrub=$1
+    shift
+
+    # Stop expanding globs
+    set -f
+    IFS=: read -r -a classpath <<< $@
+
+    for path in $classpath; do
+
+        # If it ends with a glob we'll need to dig deeper for jars
+        if [ "${path: -1:1}" = "*" ]; then
+
+            set +f
+            local expanded_classpath=$(JARS=(${path}.jar); IFS=:; echo "${JARS[*]}")
+            set -f
+
+            # If the expanded classpath contains the jar in question, we'll
+            # scrub it later.
+            if [[ $expanded_classpath =~ .*$jar_to_scrub.* ]]; then
+                mutated_classpath=$(append_path $mutated_classpath $expanded_classpath)
+
+            # If the expanded classpath doesn't contain the jar in question, use
+            # the glob version to reduce clutter.
+            else
+                mutated_classpath=$(append_path $mutated_classpath $path)
+            fi
+
+        # No glob just use the path
+        else
+            mutated_classpath=$(append_path $mutated_classpath $path)
+        fi
+    done
+
+    # Scrub all instances of the jar
+    mutated_classpath=$(remove_classpath_entries "$mutated_classpath" "$jar_to_scrub")
+    echo $mutated_classpath
+
+    set +f
+}
+
+# This function waits until bento-cluster's PID file is present. The PID file is written by
+# the MiniClusterTool after clusters have been started.
+function wait_bento_started() {
+  echo "Waiting for clusters to start..."
+  tries=30
+  while [ "$tries" -gt 0 ]; do
+    tries=$(($tries - 1))
+    if [ -e "${BENTO_PID_FILE}" ]; then
+      break
+    fi
+    sleep 2
+  done
+  if [ -e "${BENTO_PID_FILE}" ]; then
+    echo "bento-cluster started."
+    return 0
+  else
+    echo "Waiting for bento-cluster to start timed out after 60 seconds!"
+    return 1
+  fi
+}
+
+function kill_bento() {
+  # Kill a running bento-cluster process from its pid file.
+  if [ ! -f "${BENTO_PID_FILE}" ]; then
+    echo "Cannot find pid file. Is bento-cluster running?"
+    return 1
+  fi
+  PID=`cat ${BENTO_PID_FILE}`
+  if [ -z "$PID" ]; then
+    echo "No PID in pid file? Cannot stop bento-cluster."
+    return 1
+  fi
+  echo "Stopping bento-cluster..."
+  kill $PID
+  ret=$?
+  if [ "$ret" != "0" ]; then
+    echo "Error killing process with pid $PID"
+    return 1
+  fi
+  echo "Waiting for shutdown..."
+  tries=30
+  while [ "$tries" -gt 0 ]; do
+    tries=$(($tries - 1))
+    ps -e -o pid,args | grep "^$PID" 2>&1 > /dev/null
+    ret=$?
+    if [ "$ret" != 0 ]; then
+      break
+    fi
+    sleep 2
+  done
+  ps e | grep "^$PID" 2>&1 > /dev/null
+  ret=$?
+  if [ "$ret" == 0 ]; then
+    echo "Kill signal sent but waiting for bento-cluster to stop timed out after 60 seconds!."
+    return 1
+  fi
+  # bento-cluster will delete its own pid file.
+  echo "bento-cluster shutdown."
+  return 0
+}
+
+
+# Gather the bento-cluster dependency jars.
+libjars=
+for jar in `ls $BENTO_CLUSTER_HOME/lib/*.jar`; do
+    libjars=$libjars:$jar
+done
+
+# Gather the HBase classpath.
+hbase_cp=$($HBASE_HOME/bin/hbase classpath)
+hbase_cp=$(mutate_classpath 'slf4j-log4j12' "$hbase_cp")
+
+# Hadoop classpath
+hadoop_cp=$($HADOOP_HOME/bin/hadoop classpath)
+hadoop_cp=$(mutate_classpath 'slf4j-log4j12' "$hadoop_cp")
+
+# Note that we put the libjars before the hbase jars, in case there are conflicts.
+bento_conf=$BENTO_CLUSTER_HOME/conf
+bento_jar=$BENTO_CLUSTER_HOME/lib/bento-cluster-${project.version}.jar
+# We put $BENTO_CLASSPATH at the beginning classpath to allow users to win when there are conflicts.
+bento_cp="$BENTO_CLASSPATH:$bento_conf:$bento_jar:$libjars:$hadoop_cp:$hbase_cp"
+
+# Determine location of Hadoop native libraries and set java.library.path.
+if [ -d "${HADOOP_HOME}/lib/native" ]; then
+  JAVA_PLATFORM=`java -cp ${hadoop_cp} -Xmx32m org.apache.hadoop.util.PlatformName | sed -e "s/ /_/g"`
+  if [ ! -z "$JAVA_LIBRARY_PATH" ]; then
+    JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
+  else
+    JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
+  fi
+fi
+
+command=$1
+shift  # pop off the command
+
+maybeDebugMode=$1
+debugMode="no"
+if [ "$maybeDebugMode" == "--debug" -o "$maybeDebugMode" == "-d" ]; then
+  # Consume the "--debug" token, and set the logging level for
+  # the underlying command.
+  java_opts="-Dbento.logger=DEBUG,console"
+  debugMode="yes"
+  shift
+fi
+
+first_start=false
+found_cmd=false
+case $command in
+  help)
+    print_tool_usage
+    if [[ $1 == "--verbose" ]]; then
+      print_env_usage
+    fi
+    exit 0
+    ;;
+  start)
+    if [ ! -f "$HADOOP_HOME/conf/core-site.xml" ]; then
+      first_start=true
+    fi
+    found_cmd=true
+    ;;
+  stop)
+    kill_bento
+    exit $?
+    ;;
+  classpath)
+    echo "$bento_cp"
+    exit 0
+    ;;
+esac
+
+if ! $found_cmd ; then
+    echo "Unknown command: $command"
+    echo "Try:"
+    echo "  bento help"
+    exit 1
+fi
+
+export BENTO_JAVA_OPTS
+
+if [ ! -z "$JAVA_LIBRARY_PATH" ]; then
+  java_opts="$java_opts -Djava.library.path=$JAVA_LIBRARY_PATH"
+fi
+
+# If this is the first time we're running, run the first start tool.
+if $first_start ; then
+  echo "Configuring bento-cluster..."
+  class=org.kiji.bento.tools.ConfigurationSetupTool
+  class_args="--hadoop-conf-dir=${HADOOP_HOME}/conf --hbase-conf-dir=${HBASE_HOME}/conf"
+  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args
+  if [ ! -d "${CLUSTER_CONF_DIR}" ]; then
+    $(create_missing_dir "${CLUSTER_CONF_DIR}")
+    ln -s ${HADOOP_HOME}/conf/core-site.xml ${CLUSTER_CONF_DIR}/core-site.xml
+    ln -s ${HADOOP_HOME}/conf/mapred-site.xml ${CLUSTER_CONF_DIR}/mapred-site.xml
+    ln -s ${HADOOP_HOME}/conf/hdfs-site.xml ${CLUSTER_CONF_DIR}/hdfs-site.xml
+    ln -s ${HBASE_HOME}/conf/hbase-site.xml ${CLUSTER_CONF_DIR}/hbase-site.xml
+  fi
+  echo
+fi
+
+# Start the mini cluster.
+if [ -e "${BENTO_PID_FILE}" ]; then
+  echo "PID file already exists at ${BENTO_PID_FILE}"
+  echo "Stop bento-cluster or remove stale PID file before trying to start cluster again."
+  exit 1
+fi
+echo "Starting bento-cluster..."
+class=org.kiji.bento.tools.MiniClusterTool
+class_args="--state-dir=${STATE_DIR}"
+$(create_missing_dir "${STATE_DIR}")
+nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
+    &> /dev/null &
+# Comment-out the two lines above and uncomment the two lines below to write cluster
+# logs to the file specified by $BENTO_LOG_FILE. Note that bento-cluster features NO
+# automatic log rolling, and that $BENTO_LOG_FILE may grow to hard-drive-filling sizes
+# if the clusters emit many log messages. In particular, suspending the local machine
+# while bento-cluster is running will result in a high rate of error messages being
+# written to $BENTO_LOG_FILE once the machine resumes.
+#nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
+#    &> ${BENTO_LOG_FILE} &
+wait_bento_started
+exit $?
+

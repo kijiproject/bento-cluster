@@ -1,0 +1,141 @@
+<!-- Assembly configuration for the release bundle. -->
+<assembly
+    xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2
+                        http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+  <!--
+    (c) Copyright 2012 WibiData, Inc.
+
+    See the NOTICE file distributed with this work for additional
+    information regarding copyright ownership.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+  -->
+  <id>release</id>
+  <formats>
+    <format>dir</format>
+    <format>tar.gz</format>
+  </formats>
+
+  <includeBaseDirectory>true</includeBaseDirectory>
+
+  <fileSets>
+
+    <!-- put top-level files into distributions. -->
+    <fileSet>
+      <useDefaultExcludes>true</useDefaultExcludes>
+      <outputDirectory></outputDirectory>
+      <directory></directory>
+      <fileMode>0644</fileMode>
+      <includes>
+        <include>NOTICE.txt</include>
+        <include>LICENSE.txt</include>
+        <include>README.md</include>
+      </includes>
+      <filtered>true</filtered>
+    </fileSet>
+
+    <!-- put bin/ scripts into distribution. -->
+    <fileSet>
+      <useDefaultExcludes>false</useDefaultExcludes>
+      <outputDirectory>bin</outputDirectory>
+      <directory>src/main/scripts</directory>
+      <fileMode>0755</fileMode>
+      <excludes>
+        <exclude>*~</exclude>
+        <exclude>*.swp</exclude>
+      </excludes>
+      <filtered>true</filtered>
+    </fileSet>
+
+    <!-- put bento-cluster configuration files into the distribution. -->
+    <fileSet>
+      <useDefaultExcludes>false</useDefaultExcludes>
+      <outputDirectory>conf/</outputDirectory>
+      <directory>src/main/conf</directory>
+      <fileMode>0644</fileMode>
+      <excludes>
+        <exclude>*~</exclude>
+        <exclude>*.swp</exclude>
+      </excludes>
+      <filtered>false</filtered>
+    </fileSet>
+
+  </fileSets>
+
+  <dependencySets>
+
+    <!--
+      Unpack hadoop and hbase distributions into the bento-cluster distribution,
+      but leave off unnecessary config files, docs, sources, etc.
+    -->
+    <dependencySet>
+      <outputDirectory>lib/</outputDirectory>
+      <includes>
+        <include>org.apache.hadoop:hadoop-tarball:tar.gz:${hadoop.version}</include>
+        <include>org.apache.hbase:hbase:tar.gz:${hbase.version}</include>
+      </includes>
+      <unpackOptions>
+        <excludes>
+          <!-- Exclude xml configuration files. -->
+          <exclude>hbase-${hbase.version}/conf/hbase-site.xml</exclude>
+          <exclude>hadoop-${hadoop.version}/conf/core-site.xml</exclude>
+          <exclude>hadoop-${hadoop.version}/conf/mapred-site.xml</exclude>
+          <exclude>hadoop-${hadoop.version}/conf/hdfs-site.xml</exclude>
+          <!-- Exclude unneeded portions of distribution. -->
+          <exclude>hadoop-${hadoop.version}/cloudera/</exclude>
+          <exclude>hadoop-${hadoop.version}/docs/</exclude>
+          <exclude>hadoop-${hadoop.version}/src/</exclude>
+          <exclude>hadoop-${hadoop.version}/contrib/</exclude>
+          <exclude>hbase-${hbase.version}/cloudera/</exclude>
+          <exclude>hbase-${hbase.version}/docs/</exclude>
+          <exclude>hbase-${hbase.version}/src/</exclude>
+          <exclude>hbase-${hbase.version}/security/</exclude>
+        </excludes>
+      </unpackOptions>
+      <unpack>true</unpack>
+      <scope>runtime</scope>
+    </dependencySet>
+
+    <!-- Libraries required to run bento-cluster tools. -->
+    <dependencySet>
+      <outputDirectory>lib</outputDirectory>
+      <scope>runtime</scope>
+      <useTransitiveFiltering>true</useTransitiveFiltering>
+      <fileMode>0644</fileMode>
+      <excludes>
+        <exclude>org.apache.hadoop:hadoop-tarball:tar.gz:${hadoop.version}</exclude>
+        <exclude>org.apache.hbase:hbase:tar.gz:${hbase.version}</exclude>
+        <exclude>org.apache.hadoop:hadoop-test:jar:${hadoop.version}</exclude>
+      </excludes>
+    </dependencySet>
+
+    <!--
+      Include the CDH4 version of the hadoop test jar so it can be used over that in the hadoop
+      distribution.
+    -->
+    <dependencySet>
+      <outputDirectory>lib</outputDirectory>
+      <scope>runtime</scope>
+      <useTransitiveDependencies>false</useTransitiveDependencies>
+      <fileMode>0644</fileMode>
+      <includes>
+        <include>org.apache.hadoop:hadoop-test:jar:${hadoop.version}</include>
+      </includes>
+    </dependencySet>
+
+  </dependencySets>
+
+</assembly>
+

@@ -1,0 +1,3 @@
+The core-site.xml used by bento-cluster. You can edit this file to configure
+settings shared by HDFS, MapReduce and HBase.
+

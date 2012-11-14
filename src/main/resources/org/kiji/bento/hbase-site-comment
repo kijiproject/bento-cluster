@@ -1,0 +1,8 @@
+The hbase-site.xml used by bento-cluster. You can edit this file to configure
+the behavior of your HBase cluster. Outright removing one of the variables
+defined here may cause errors in the clusters started by bento-cluster.
+
+Note that bento-cluster forces the values of some configuration variables.
+Namely, hbase.master.port and hbase.regionserver.port are controlled by
+bento-cluster and any values specified here will be ignored.
+
