@@ -84,6 +84,7 @@
       <outputDirectory>lib/</outputDirectory>
       <includes>
         <include>org.apache.hadoop:hadoop-tarball:tar.gz:${hadoop.version}</include>
+        <include>org.apache.hadoop:hdfs-webapps:tar.gz:${hadoop.version}</include>
         <include>org.apache.hbase:hbase:tar.gz:${hbase.version}</include>
       </includes>
       <unpackOptions>

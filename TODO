@@ -1,7 +1,0 @@
-24. user should be able to run port configurator at any time.
-25. bento should not start any clusters if any of the ports are taken.
-26. move hbase folder to root of hdfs fs??
-27. fix whatever's up with the namenode ui (it runs but doesn't work)
-28. change placement of pid dir and logs to be more standard (or at least what hadoop/kiji do)
-29. get rid of the build dir or stick it in a reasonable place
-
