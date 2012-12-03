@@ -50,6 +50,8 @@ BENTO_CLUSTER_HOME="${bin}/.."
 libdir="${BENTO_CLUSTER_HOME}/lib"
 HADOOP_HOME="${libdir}/hadoop-${hadoop.version}"
 HBASE_HOME="${libdir}/hbase-${hbase.version}"
+HADOOP_CONF_DIR="${HADOOP_HOME}/conf"
+HBASE_CONF_DIR="${HBASE_HOME}/conf"
 PATH="${BENTO_CLUSTER_HOME}/bin:${HADOOP_HOME}/bin:${HBASE_HOME}/bin:${PATH}"
 
 if [ `uname` = "Darwin" ]; then
@@ -61,8 +63,12 @@ export BENTO_CLUSTER_HOME
 echo "Set BENTO_CLUSTER_HOME=${BENTO_CLUSTER_HOME}"
 export HADOOP_HOME
 echo "Set HADOOP_HOME=${HADOOP_HOME}"
+export HADOOP_CONF_DIR
+echo "Set HADOOP_CONF_DIR=${HADOOP_CONF_DIR}"
 export HBASE_HOME
 echo "Set HBASE_HOME=${HBASE_HOME}"
+export HBASE_CONF_DIR
+echo "Set HBASE_CONF_DIR=${HBASE_CONF_DIR}"
 export PATH
 echo "Added Hadoop, HBase, and bento-cluster binaries to PATH."
 
