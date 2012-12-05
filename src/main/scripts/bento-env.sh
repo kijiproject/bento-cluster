@@ -39,9 +39,44 @@
 #                       $HADOOP_HOME/bin, and $HBASE_HOME/bin are on it.
 #
 
+function resolve_symlink() {
+  TARGET_FILE=$1
+
+  if [ -z "$TARGET_FILE" ]; then
+    echo ""
+    return 0
+  fi
+
+  cd $(dirname "$TARGET_FILE")
+  TARGET_FILE=$(basename "$TARGET_FILE")
+
+  # Iterate down a (possible) chain of symlinks
+  count=0
+  while [ -L "$TARGET_FILE" ]; do
+      if [ "$count" -gt 1000 ]; then
+        # Just stop here, we've hit 1,000 recursive symlinks. (cycle?)
+        break
+      fi
+
+      TARGET_FILE=$(readlink "$TARGET_FILE")
+      cd $(dirname "$TARGET_FILE")
+      TARGET_FILE=$(basename "$TARGET_FILE")
+      count=$(( $count + 1 ))
+  done
+
+  # Compute the canonicalized name by finding the physical path 
+  # for the directory we're in and appending the target file.
+  PHYS_DIR=$(pwd -P)
+  RESULT="$PHYS_DIR/$TARGET_FILE"
+  echo "$RESULT"
+}
+
 # Get the directory this script is located in, no matter how the script is being
 # run.
-bin="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+prgm="${BASH_SOURCE[0]}"
+prgm=`resolve_symlink "$prgm"`
+bin=`dirname "$prgm"`
+bin=`cd "${bin}" && pwd`
 
 # The script is inside a bento-cluster distribution.
 BENTO_CLUSTER_HOME="${bin}/.."
