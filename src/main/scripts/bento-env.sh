@@ -73,7 +73,7 @@ function resolve_symlink() {
 
 # Get the directory this script is located in, no matter how the script is being
 # run.
-prgm="${BASH_SOURCE[0]}"
+prgm="${BASH_SOURCE:-$0}"
 prgm=`resolve_symlink "$prgm"`
 bin=`dirname "$prgm"`
 bin=`cd "${bin}" && pwd`
