@@ -27,8 +27,6 @@ import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Scanner;
 
-import com.odiago.common.flags.Flag;
-import com.odiago.common.flags.FlagParser;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -39,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.bento.BentoClusters;
+import org.kiji.common.flags.Flag;
+import org.kiji.common.flags.FlagParser;
 
 /**
  * <p>This tool starts or stops mini hadoop and hbase clusters for use in testing and prototyping

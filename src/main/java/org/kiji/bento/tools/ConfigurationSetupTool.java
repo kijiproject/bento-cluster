@@ -25,8 +25,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 
-import com.odiago.common.flags.Flag;
-import com.odiago.common.flags.FlagParser;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.util.Tool;
@@ -39,6 +37,8 @@ import org.kiji.bento.HBaseSiteConfBuilder;
 import org.kiji.bento.HadoopPorts;
 import org.kiji.bento.HdfsSiteConfBuilder;
 import org.kiji.bento.MapRedSiteConfBuilder;
+import org.kiji.common.flags.Flag;
+import org.kiji.common.flags.FlagParser;
 
 /**
  * A tool to help the user setup their Hadoop *-site.xml files with correct ports and settings.
