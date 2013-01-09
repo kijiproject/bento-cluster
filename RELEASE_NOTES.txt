@@ -4,6 +4,8 @@
 
 Version 1.0.0-rc3
   * CLUSTER-14. Adds RELEASE_NOTES.txt
+  * CLUSTER-4. Allow port configuration utility to be run by the user
+      at any time.
 
 Version 1.0.0-rc2
   * CLUSTER-1: Bento cluster will now correctly run webapps for HDFS.

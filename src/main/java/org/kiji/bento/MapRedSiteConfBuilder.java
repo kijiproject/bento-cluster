@@ -20,9 +20,16 @@
 package org.kiji.bento;
 
 /**
- * A builder for a Hadoop "mapred-site.xml" file.
+ * A builder for a Hadoop XML resource file named "bento-mapred-site.xml" intended to be included
+ * in the "mapred-site.xml" file used by bento-cluster. This resource contains property values
+ * managed through bento-cluster's configuration utility.
  */
 public class MapRedSiteConfBuilder extends ConfigurationBuilder {
+  /** The configuration key used for the address of the job tracker. */
+  public static final String JOB_TRACKER_ADDRESS_CONF = "mapred.job.tracker";
+  /** The configuration key used for the address of the job tracker UI. */
+  public static final String JOB_TRACKER_UI_ADDRESS_CONF = "mapred.job.tracker.http.address";
+
   /** A resource containing a usage comment for the file. */
   private static final String MAPRED_SITE_COMMENT_RESOURCE = "org/kiji/bento/mapred-site-comment";
 
@@ -40,7 +47,7 @@ public class MapRedSiteConfBuilder extends ConfigurationBuilder {
    * @return This builder, so configuration can be chained.
    */
   public MapRedSiteConfBuilder withJobTrackerPort(int port) {
-    return withLocalAddressAtPort("mapred.job.tracker", port);
+    return withLocalAddressAtPort(JOB_TRACKER_ADDRESS_CONF, port);
   }
 
   /**
@@ -50,6 +57,6 @@ public class MapRedSiteConfBuilder extends ConfigurationBuilder {
    * @return This builder, so configuration can be chained.
    */
   public MapRedSiteConfBuilder withJobTrackerUIPort(int port) {
-    return withLocalAddressAtPort("mapred.job.tracker.http.address", port);
+    return withLocalAddressAtPort(JOB_TRACKER_UI_ADDRESS_CONF, port);
   }
 }

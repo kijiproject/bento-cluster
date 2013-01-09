@@ -22,6 +22,8 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Rule;
@@ -29,7 +31,8 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * Tests the functionality of {@link ConfigurationBuilder}.
+ * Tests the functionality of subclasses of {@link ConfigurationBuilder} specific to certain
+ * Hadoop XML configuration resources managed by bento-cluster.
  */
 public class TestConfigurationBuilder {
 
@@ -49,52 +52,76 @@ public class TestConfigurationBuilder {
   }
 
   /**
-   * Reads the given file from the temporary directory and checks that the given configuration
-   * key is present.
+   * Reads the given file from the temporary directory and checks that the specified properties
+   * (name/value pairs) are present.
    *
    * @param fileName The name of the file to read.
-   * @param confKey The configuration key to check for.
+   * @param properties The property name/value pairs to check for.
    */
-  private void checkFor(String fileName, String... confKey) throws IOException {
-    String contents = readContents(fileName);
-    for (String key : confKey) {
-      assertTrue(contents.contains("<name>" + key + "</name>"));
+  private void checkFor(String fileName, Map<String, String> properties)
+      throws IOException {
+    final String contents = readContents(fileName);
+    System.out.println(contents);
+    final String xmlPropertyFormat =
+        "  <property>\n"
+            + "    <name>%s</name>\n"
+            + "    <value>%s</value>\n"
+            + "  </property>\n";
+    for (final Map.Entry<String, String> property : properties.entrySet()) {
+      final String expectedXml =
+          String.format(xmlPropertyFormat, property.getKey(), property.getValue());
+      assertTrue(contents.contains(expectedXml));
     }
   }
 
   @Test
   public void testMapRedSite() throws IOException {
-    MapRedSiteConfBuilder builder = new MapRedSiteConfBuilder()
+    final MapRedSiteConfBuilder builder = new MapRedSiteConfBuilder()
         .withJobTrackerPort(1)
         .withJobTrackerUIPort(2);
     builder.writeToDir(mTempFolder.getRoot());
-    checkFor("mapred-site.xml", "mapred.job.tracker", "mapred.job.tracker.http.address");
+
+    final Map<String, String> expectedProperties = new HashMap<String, String>();
+    expectedProperties.put("mapred.job.tracker", "localhost:1");
+    expectedProperties.put("mapred.job.tracker.http.address", "localhost:2");
+    checkFor("bento-mapred-site.xml", expectedProperties);
   }
 
   @Test
   public void testCoreSite() throws IOException {
-    CoreSiteConfBuilder builder = new CoreSiteConfBuilder()
-        .withNamenodePort(1);
+    final CoreSiteConfBuilder builder = new CoreSiteConfBuilder()
+        .withNameNodePort(1);
     builder.writeToDir(mTempFolder.getRoot());
-    checkFor("core-site.xml", "fs.defaultFS");
+
+    final Map<String, String> expectedProperties = new HashMap<String, String>();
+    expectedProperties.put("fs.defaultFS", "hdfs://localhost:1");
+    checkFor("bento-core-site.xml", expectedProperties);
   }
 
   @Test
   public void testHdfsSite() throws IOException {
-    HdfsSiteConfBuilder builder = new HdfsSiteConfBuilder()
+    final HdfsSiteConfBuilder builder = new HdfsSiteConfBuilder()
         .withNameNodeUIPort(1);
     builder.writeToDir(mTempFolder.getRoot());
-    checkFor("hdfs-site.xml", "dfs.http.address");
+
+    final Map<String, String> expectedProperties = new HashMap<String, String>();
+    expectedProperties.put("dfs.http.address", "localhost:1");
+    checkFor("bento-hdfs-site.xml", expectedProperties);
   }
 
   @Test
   public void testHBaseSite() throws IOException {
-    HBaseSiteConfBuilder builder = new HBaseSiteConfBuilder()
+    final HBaseSiteConfBuilder builder = new HBaseSiteConfBuilder()
         .withMasterUIPort(1)
         .withMaxZookeeperConnections(2)
         .withZookeeperClientPort(3);
     builder.writeToDir(mTempFolder.getRoot());
-    checkFor("hbase-site.xml", "hbase.master.info.port", "hbase.zookeeper.property.clientPort",
-        "hbase.zookeeper.property.maxClientCnxns");
+
+    final Map<String, String> expectedProperties = new HashMap<String, String>();
+    expectedProperties.put("hbase.master.info.port", "1");
+    expectedProperties.put("hbase.zookeeper.property.maxClientCnxns", "2");
+    expectedProperties.put("hbase.zookeeper.property.clientPort", "3");
+    checkFor("bento-hbase-site.xml", expectedProperties);
   }
 }
+

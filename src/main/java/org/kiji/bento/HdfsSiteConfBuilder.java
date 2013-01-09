@@ -20,9 +20,15 @@
 package org.kiji.bento;
 
 /**
- * A builder for a Hadoop "hdfs-site.xml" file.
+ * A builder for a Hadoop XML resource file named "bento-hdfs-site.xml" intended to be included
+ * in the "hdfs-site.xml" file used by bento-cluster. This resource contains property values
+ * managed through bento-cluster's configuration utility.
  */
 public class HdfsSiteConfBuilder extends ConfigurationBuilder {
+
+  /** The configuration key used for the address of the NameNode UI. */
+  public static final String NAME_NODE_UI_ADDRESS_CONF = "dfs.http.address";
+
   /** A resource containing a usage comment for the file. */
   private static final String HDFS_SITE_COMMENT_RESOURCE = "org/kiji/bento/hdfs-site-comment";
 
@@ -40,7 +46,7 @@ public class HdfsSiteConfBuilder extends ConfigurationBuilder {
    * @return This builder, so configuration can be chained.
    */
   public HdfsSiteConfBuilder withNameNodeUIPort(int port) {
-    return withLocalAddressAtPort("dfs.http.address", port);
+    return withLocalAddressAtPort(NAME_NODE_UI_ADDRESS_CONF, port);
   }
 }
 

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!--
+  The mapred-site.xml used by bento-cluster. You can edit this file to configure
+  settings used by MapReduce.
+
+  Note that bento-cluster forces the values of certain configuration variables.
+  Namely, hadoop.log.dir, hadoop.working.dir, mapred.output.dir, and
+  hadoop.tmp.dir are controlled by bento-cluster and any values specified here
+  will be ignored.
+-->
+
+<configuration xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!--
+    This tag includes configuration properties managed by bento-cluster in this
+    configuration. Note that modifying the file included below, or modifying
+    this include tag, will cause errors.
+  -->
+  <xi:include href="bento-mapred-site.xml"/>
+
+</configuration>

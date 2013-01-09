@@ -20,9 +20,14 @@
 package org.kiji.bento;
 
 /**
- * A builder for a Hadoop "core-site.xml" file.
+ * A builder for a Hadoop XML resource file named "bento-core-site.xml" intended to be included
+ * in the "core-site.xml" file used by bento-cluster. This resource contains property values
+ * managed through bento-cluster's configuration utility.
  */
 public class CoreSiteConfBuilder extends ConfigurationBuilder {
+  /** The configuration key used for the NameNode address. */
+  public static final String NAME_NODE_ADDRESS_CONF = "fs.defaultFS";
+
   /** A resource containing a usage comment for the file. */
   private static final String CORE_SITE_COMMENT_RESOURCE = "org/kiji/bento/core-site-comment";
 
@@ -39,8 +44,8 @@ public class CoreSiteConfBuilder extends ConfigurationBuilder {
    * @param port The namenode port.
    * @return This builder, so configuration can be chained.
    */
-  public CoreSiteConfBuilder withNamenodePort(int port) {
-    return withValue("fs.defaultFS", "hdfs://localhost:" + port);
+  public CoreSiteConfBuilder withNameNodePort(int port) {
+    return withValue(NAME_NODE_ADDRESS_CONF, "hdfs://localhost:" + port);
   }
 }
 

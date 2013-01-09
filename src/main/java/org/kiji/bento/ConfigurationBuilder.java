@@ -27,7 +27,12 @@ import java.nio.charset.Charset;
 import com.google.common.io.Resources;
 
 /**
- * A builder for Hadoop XML site configuration files.
+ * A builder for Hadoop XML configuration files containing properties set through bento-cluster's
+ * configuration utility.  Any such XML file has file name equivalent to a conventional Hadoop
+ * XML resource (core-site.xml, hbase-site.xml, etc.) but prefixed with "bento-"
+ * (bento-core-site.xml, bento-hbase-site.xml, etc.).  These configuration files are intended to
+ * be included by the actual XML configuration files used by the cluster. A configuration builder
+ * is capable of being initialized with property values contained in an existing "bento-" resource.
  */
 public abstract class ConfigurationBuilder {
   /**
@@ -36,12 +41,14 @@ public abstract class ConfigurationBuilder {
   private final ConfigurationWriter mWriter;
 
   /**
-   * The name of this configuration, for example, "mapred-site" or "core-site".
+   * The name of the file to which this configuration will be written.
    */
-  private final String mName;
+  private final String mFileName;
 
   /**
-   * Constructs a new configuration builder for a configuration with the specified name.
+   * Constructs a new configuration builder.  The name specified for the configuration will be
+   * used to generate a filename for the configuration. The filename will be prefixed with
+   * "bento-" and suffixed with ".xml".
    *
    * @param name The name of the configuration, for example, "mapred-site" or "core-site."
    * @param commentResource The name of a resource that contains a usage comment for the
@@ -57,25 +64,18 @@ public abstract class ConfigurationBuilder {
           + "comment could not be read from resource: " + commentResource);
     }
     mWriter = new ConfigurationWriter(comment);
-    mName = name;
-  }
-
-  /**
-   * @return An XML string encoding the configuration.
-   */
-  public String getConfigurationXML() {
-    return mWriter.getConfigurationXML();
+    mFileName = "bento-" + name + ".xml";
   }
 
   /**
    * Write the XML configuration to a file in the specified directory. The file will have name
-   * equivalent to the configuration name and the <code>.xml</code> extension.
+   * equivalent to the configuration name prefixed with "bento-" and suffixed with ".xml".
    *
    * @param directory The directory where the configuration should be written.
    * @throws IOException If there is a problem writing the configuration.
    */
   public void writeToDir(File directory) throws IOException {
-    final File outputFile = new File(directory, mName + ".xml");
+    final File outputFile = new File(directory, mFileName);
     mWriter.write(outputFile);
   }
 

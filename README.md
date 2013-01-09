@@ -88,6 +88,14 @@ time you start bento-cluster, bento-cluster will configure the ports
 used by Hadoop and HBase and write configuration XML files to these
 directories.
 
+To manually run the port configuration utility, use:
+
+> `bento config`
+
+For more information on using the port configuration utility, use:
+
+> `bento config --help`
+
 For convenience, bento-cluster also creates a directory
 `$BENTO_CLUSTER_HOME/cluster-conf` containing symlinks to the Hadoop
 and HBase XML configuration files. You may edit the files

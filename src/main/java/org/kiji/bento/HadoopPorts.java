@@ -19,9 +19,13 @@
 
 package org.kiji.bento;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,31 +36,167 @@ import org.slf4j.LoggerFactory;
 public class HadoopPorts {
   private static final Logger LOG = LoggerFactory.getLogger(HadoopPorts.class);
 
-  public static final int NAMENODE_PORT_DEFAULT = 8020;
-  public static final int NAMENODE_UI_PORT_DEFAULT = 50070;
-  public static final int JT_PORT_DEFAULT = 8021;
-  public static final int JT_UI_PORT_DEFAULT = 50030;
-  public static final int HMASTER_UI_PORT_DEFAULT = 60010;
-  public static final int ZOOKEEPER_CLIENT_PORT_DEFAULT = 2181;
+  /** The conventional port value for the NameNode. */
+  public static final int NAME_NODE_PORT_CONVENTION = 8020;
+  /** The conventional port value for the NameNode UI. */
+  public static final int NAME_NODE_UI_PORT_CONVENTION = 50070;
+  /** The conventional port value for the JobTracker. */
+  public static final int JOB_TRACKER_PORT_CONVENTION = 8021;
+  /** The conventional port value for the JobTracker UI. */
+  public static final int JOB_TRACKER_UI_PORT_CONVENTION = 50030;
+  /** The conventional port value for the HMaster UI. */
+  public static final int HMASTER_UI_PORT_CONVENTION = 60010;
+  /** The conventional port value for the HMaster UI. */
+  public static final int ZOOKEEPER_CLIENT_PORT_CONVENTION = 2181;
 
-  private int mNameNodePort = NAMENODE_PORT_DEFAULT;
-  private int mNameNodeUIPort = NAMENODE_UI_PORT_DEFAULT;
-  private int mJTPort = JT_PORT_DEFAULT;
-  private int mJTUIPort = JT_UI_PORT_DEFAULT;
-  private int mHMasterUIPort = HMASTER_UI_PORT_DEFAULT;
-  private int mZookeeperClientPort = ZOOKEEPER_CLIENT_PORT_DEFAULT;
+  /** The default to use for the NameNode port. */
+  private int mNameNodePortDefault;
+  /** The port for the NameNode. */
+  private int mNameNodePort;
+  /** The default to use for the NameNode UI port. */
+  private int mNameNodeUIPortDefault;
+  /** The port for the NameNode UI. */
+  private int mNameNodeUIPort;
+  /** The default to use for the JobTracker port. */
+  private int mJTPortDefault;
+  /** The port for the JobTracker. */
+  private int mJTPort;
+  /** The default port to use for the JobTracker UI. */
+  private int mJTUIPortDefault;
+  /** The port for the JobTracker UI. */
+  private int mJTUIPort;
+  /** The default to use for the HMaster UI port. */
+  private int mHMasterUIPortDefault;
+  /** The port for the HMaster UI. */
+  private int mHMasterUIPort;
+  /** The default to use for the Zookeeper client port. */
+  private int mZookeeperClientPortDefault;
+  /** The Zookeeper client port. */
+  private int mZookeeperClientPort;
+
+  /**
+   * Constructs an instance that uses default values for ports taken from Hadoop/HBase conventions.
+   */
+  public HadoopPorts() {
+    setDefaultsUsingConventions();
+    initializeFromDefaults();
+  }
+
+  /**
+   * Constructs an instance that uses default values for ports taken from bento-managed Hadoop XML
+   * resource files present in the specified directories. If a particular resource does not exist,
+   * or if a particular port is not set in the resources, than the conventional default for the
+   * port will be used.
+   *
+   * @param hadoopConfDir A directory containing bento-managed Hadoop XML resource files
+   *     (bento-core-site.xml, bento-mapred-site.xml, etc.).
+   * @param hbaseConfDir  A directory containing bento-managed HBase XML resource files
+   *     (bento-hbase-site.xml).
+   */
+  public HadoopPorts(File hadoopConfDir, File hbaseConfDir) {
+    // Create a Hadoop configuration populated with configuration already existing in
+    // bento-managed resources.
+    Configuration confWithDefaults = getConfigurationWithResources(hadoopConfDir, hbaseConfDir);
+
+    // Now set defaults informed by the configuration we made.
+    setDefaultsUsingConfiguration(confWithDefaults);
+
+    // Finally, initialize ports using defaults.
+    initializeFromDefaults();
+  }
+
+  /**
+   * Adds the properties defined in a bento-managed Hadoop XML resource to the specified
+   * configuration. If the resource specified does not exist, no new properties will be added to
+   * the configuration.
+   *
+   * @param conf The configuration to add properties to.
+   * @param resource The Hadoop XMl resource whose properties should be added to the configuration.
+   */
+  private void addResourceToConfiguration(Configuration conf, File resource) {
+    try {
+      FileInputStream inputStream = new FileInputStream(resource);
+      // The input stream is closed as a side effect of this method.
+      conf.addResource(inputStream);
+    } catch (FileNotFoundException e) {
+      // Do nothing if the specified resource file does not exist. We'll use conventional
+      // defaults in this case.
+    }
+  }
+
+  /**
+   * Gets an {@link Configuration} with properties obtained from the bento-core-site.xml,
+   * bento-mapred-site.xml, bento-hdfs-site.xml, and bento-hbase-site.xml present in the specified
+   * directories.
+   *
+   * @param hadoopConfDir The Hadoop configuration directory.
+   * @param hbaseConfDir The HBase configuration directory.
+   * @return A configuration populated with properties from bento-managed Hadoop XML resources
+   *     present in the specified directories.
+   */
+  private Configuration getConfigurationWithResources(File hadoopConfDir, File hbaseConfDir) {
+    Configuration conf = new Configuration(false);
+    addResourceToConfiguration(conf,  new File(hadoopConfDir, "bento-core-site.xml"));
+    addResourceToConfiguration(conf,  new File(hadoopConfDir, "bento-mapred-site.xml"));
+    addResourceToConfiguration(conf,  new File(hadoopConfDir, "bento-hdfs-site.xml"));
+    addResourceToConfiguration(conf,  new File(hbaseConfDir, "bento-hbase-site.xml"));
+    return conf;
+  }
+
+  /**
+   * Sets the defaults for ports using Hadoop/HBase conventions.
+   */
+  private void setDefaultsUsingConventions() {
+    mNameNodePortDefault = NAME_NODE_PORT_CONVENTION;
+    mNameNodeUIPortDefault = NAME_NODE_UI_PORT_CONVENTION;
+    mJTPortDefault = JOB_TRACKER_PORT_CONVENTION;
+    mJTUIPortDefault = JOB_TRACKER_UI_PORT_CONVENTION;
+    mHMasterUIPortDefault = HMASTER_UI_PORT_CONVENTION;
+    mZookeeperClientPortDefault = ZOOKEEPER_CLIENT_PORT_CONVENTION;
+  }
+
+  /**
+   * Sets the defaults for ports using properties in the provided configuration. If a
+   * property containing a port is not present in the provided configuration,
+   * than the conventional default is used.
+   *
+   * @param confWithDefaults A configuration possibly containing default values for ports.
+   */
+  private void setDefaultsUsingConfiguration(Configuration confWithDefaults) {
+    mNameNodePortDefault = confWithDefaults.getSocketAddr(
+        CoreSiteConfBuilder.NAME_NODE_ADDRESS_CONF,
+        "localhost", NAME_NODE_PORT_CONVENTION).getPort();
+
+    mNameNodeUIPortDefault = confWithDefaults.getSocketAddr(
+        HdfsSiteConfBuilder.NAME_NODE_UI_ADDRESS_CONF,
+        "localhost", NAME_NODE_UI_PORT_CONVENTION).getPort();
+
+    mJTPortDefault = confWithDefaults.getSocketAddr(
+        MapRedSiteConfBuilder.JOB_TRACKER_ADDRESS_CONF,
+        "localhost", JOB_TRACKER_PORT_CONVENTION).getPort();
+
+    mJTUIPortDefault = confWithDefaults.getSocketAddr(
+        MapRedSiteConfBuilder.JOB_TRACKER_UI_ADDRESS_CONF,
+        "localhost", JOB_TRACKER_UI_PORT_CONVENTION).getPort();
+
+    mHMasterUIPortDefault = confWithDefaults.getInt(HBaseSiteConfBuilder.HMASTER_UI_PORT_CONF,
+        HMASTER_UI_PORT_CONVENTION);
+
+    mZookeeperClientPortDefault = confWithDefaults.getInt(
+        HBaseSiteConfBuilder.ZOOKEEPER_CLIENT_PORT_CONF, ZOOKEEPER_CLIENT_PORT_CONVENTION);
+  }
 
   /**
    * @return <code>true</code> if all ports are set to their default value,
    *     <code>false</code> otherwise.
    */
   public boolean isAllDefaultsUsed() {
-    return mNameNodePort == NAMENODE_PORT_DEFAULT
-        && mNameNodeUIPort == NAMENODE_UI_PORT_DEFAULT
-        && mJTPort == JT_PORT_DEFAULT
-        && mJTUIPort == JT_UI_PORT_DEFAULT
-        && mHMasterUIPort == HMASTER_UI_PORT_DEFAULT
-        && mZookeeperClientPort == ZOOKEEPER_CLIENT_PORT_DEFAULT;
+    return mNameNodePort == mNameNodePortDefault
+        && mNameNodeUIPort == mNameNodeUIPortDefault
+        && mJTPort == mJTPortDefault
+        && mJTUIPort == mJTUIPort
+        && mHMasterUIPort == mHMasterUIPortDefault
+        && mZookeeperClientPort == mZookeeperClientPortDefault;
   }
 
   /**
@@ -136,13 +276,13 @@ public class HadoopPorts {
   /**
    * Chooses values for all ports, trying default values first.
    */
-  public void initializeFromDefaults() {
-    mNameNodePort = findOpenPort(NAMENODE_PORT_DEFAULT);
-    mNameNodeUIPort = findOpenPort(NAMENODE_UI_PORT_DEFAULT);
-    mJTPort = findOpenPort(JT_PORT_DEFAULT);
-    mJTUIPort = findOpenPort(JT_UI_PORT_DEFAULT);
-    mHMasterUIPort = findOpenPort(HMASTER_UI_PORT_DEFAULT);
-    mZookeeperClientPort = findOpenPort(ZOOKEEPER_CLIENT_PORT_DEFAULT);
+  private void initializeFromDefaults() {
+    mNameNodePort = findOpenPort(mNameNodePortDefault);
+    mNameNodeUIPort = findOpenPort(mNameNodeUIPortDefault);
+    mJTPort = findOpenPort(mJTPortDefault);
+    mJTUIPort = findOpenPort(mJTUIPortDefault);
+    mHMasterUIPort = findOpenPort(mHMasterUIPortDefault);
+    mZookeeperClientPort = findOpenPort(mZookeeperClientPortDefault);
   }
 
   /**

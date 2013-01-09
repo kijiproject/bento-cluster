@@ -49,7 +49,7 @@ function resolve_symlink() {
       count=$(( $count + 1 ))
   done
 
-  # Compute the canonicalized name by finding the physical path 
+  # Compute the canonicalized name by finding the physical path
   # for the directory we're in and appending the target file.
   PHYS_DIR=$(pwd -P)
   RESULT="$PHYS_DIR/$TARGET_FILE"
@@ -96,11 +96,15 @@ function print_tool_usage() {
   echo
   echo "COMMANDS"
   echo
-  echo "  help          - Display this help message. Use --verbose for more information."
+  echo "  help          - Displays this help message. Use --verbose for more information."
   echo "  start         - Starts HDFS, MapReduce, and HBase clusters managed by bento-cluster."
   echo "  stop          - Stops HDFS, MapReduce, and HBase clusters managed by bento-cluster."
-  echo "  classpath     - Print the classpath used to run bento-cluster."
+  echo "  config        - Configures the ports used by bento-cluster."
+  echo "  classpath     - Prints the classpath used to run bento-cluster."
   echo
+  echo "FLAGS"
+  echo "  The config command can take some command-line flags.  Use bento config --help"
+  echo "  for more information."
 }
 
 function print_env_usage() {
@@ -316,8 +320,9 @@ if [ "$maybeDebugMode" == "--debug" -o "$maybeDebugMode" == "-d" ]; then
   shift
 fi
 
-first_start=false
+run_config=false
 found_cmd=false
+start_cluster=false
 case $command in
   help)
     print_tool_usage
@@ -327,14 +332,19 @@ case $command in
     exit 0
     ;;
   start)
+    start_cluster=true
     if [ ! -f "$HADOOP_HOME/conf/core-site.xml" ]; then
-      first_start=true
+      run_config=true
     fi
     found_cmd=true
     ;;
   stop)
     kill_bento
     exit $?
+    ;;
+  config)
+    run_config=true
+    found_cmd=true
     ;;
   classpath)
     echo "$bento_cp"
@@ -355,11 +365,17 @@ if [ ! -z "$JAVA_LIBRARY_PATH" ]; then
   java_opts="$java_opts -Djava.library.path=$JAVA_LIBRARY_PATH"
 fi
 
-# If this is the first time we're running, run the first start tool.
-if $first_start ; then
-  echo "Configuring bento-cluster..."
+# If required or requested, run the port configuration tool.
+if $run_config ; then
+  if [ -e "${BENTO_PID_FILE}" ]; then
+    echo "PID file exists at ${BENTO_PID_FILE}"
+    echo "Stop bento-cluster or remove stale PID file before running port configuration utility."
+    exit 1
+  fi
+  echo "Running bento-cluster port configuration utility."
+  echo
   class=org.kiji.bento.tools.ConfigurationSetupTool
-  class_args="--hadoop-conf-dir=${HADOOP_HOME}/conf --hbase-conf-dir=${HBASE_HOME}/conf"
+  class_args="$@ --hadoop-conf-dir=${HADOOP_HOME}/conf --hbase-conf-dir=${HBASE_HOME}/conf"
   java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args
   if [ ! -d "${CLUSTER_CONF_DIR}" ]; then
     $(create_missing_dir "${CLUSTER_CONF_DIR}")
@@ -372,28 +388,31 @@ if $first_start ; then
 fi
 
 # Start the mini cluster.
-if [ -e "${BENTO_PID_FILE}" ]; then
-  echo "PID file already exists at ${BENTO_PID_FILE}"
-  echo "Stop bento-cluster or remove stale PID file before trying to start cluster again."
-  exit 1
+if $start_cluster ; then
+  if [ -e "${BENTO_PID_FILE}" ]; then
+    echo "PID file already exists at ${BENTO_PID_FILE}"
+    echo "Stop bento-cluster or remove stale PID file before trying to start cluster again."
+    exit 1
+  fi
+  echo "Starting bento-cluster..."
+
+  class=org.kiji.bento.tools.MiniClusterTool
+  class_args="--state-dir=${STATE_DIR}"
+  $(create_missing_dir "${STATE_DIR}")
+  cd "${STATE_DIR}"
+
+  nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
+      &> /dev/null &
+  # Comment-out the two lines above and uncomment the two lines below to write cluster
+  # logs to the file specified by $BENTO_LOG_FILE. Note that bento-cluster features NO
+  # automatic log rolling, and that $BENTO_LOG_FILE may grow to hard-drive-filling sizes
+  # if the clusters emit many log messages. In particular, suspending the local machine
+  # while bento-cluster is running will result in a high rate of error messages being
+  # written to $BENTO_LOG_FILE once the machine resumes.
+  #nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
+  #    &> ${BENTO_LOG_FILE} &
+  wait_bento_started
 fi
-echo "Starting bento-cluster..."
 
-class=org.kiji.bento.tools.MiniClusterTool
-class_args="--state-dir=${STATE_DIR}"
-$(create_missing_dir "${STATE_DIR}")
-cd "${STATE_DIR}"
-
-nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
-    &> /dev/null &
-# Comment-out the two lines above and uncomment the two lines below to write cluster
-# logs to the file specified by $BENTO_LOG_FILE. Note that bento-cluster features NO
-# automatic log rolling, and that $BENTO_LOG_FILE may grow to hard-drive-filling sizes
-# if the clusters emit many log messages. In particular, suspending the local machine
-# while bento-cluster is running will result in a high rate of error messages being
-# written to $BENTO_LOG_FILE once the machine resumes.
-#nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
-#    &> ${BENTO_LOG_FILE} &
-wait_bento_started
 exit $?
 

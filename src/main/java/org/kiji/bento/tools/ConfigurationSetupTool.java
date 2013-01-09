@@ -21,16 +21,17 @@ package org.kiji.bento.tools;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.List;
 
+import com.google.common.io.Resources;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.bento.CoreSiteConfBuilder;
 import org.kiji.bento.HBaseSiteConfBuilder;
@@ -41,20 +42,34 @@ import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
 
 /**
- * A tool to help the user setup their Hadoop *-site.xml files with correct ports and settings.
+ * A tool to help the user create bento-managed Hadoop XML resource files with correct ports and
+ * settings.
  */
 public class ConfigurationSetupTool extends Configured implements Tool {
-  private static final Logger LOG = LoggerFactory.getLogger(ConfigurationSetupTool.class);
+  private static final String RESOURCES_ROOT = "org/kiji/bento/";
 
   /** A flag used to pass the HBase configuration directory. */
-  @Flag(name="hadoop-conf-dir")
+  @Flag(name = "hadoop-conf-dir", hidden = true)
   private String mHadoopConfDirPath = "";
   private File mHadoopConfDir;
 
   /** A flag used to pass the Hadoop configuration directory. */
-  @Flag(name="hbase-conf-dir")
+  @Flag(name = "hbase-conf-dir", hidden = true)
   private String mHBaseConfDirPath = "";
   private File mHBaseConfDir;
+
+  @Flag(name = "prompt",
+      usage = "If true, the utility will always prompt for ports, even if defaults are open.")
+  private boolean mAlwaysPrompt = false;
+
+  @Flag(name = "use-hadoop-defaults",
+      usage = "If true, default port values will follow Hadoop conventions, not existing "
+          + "configuration.")
+  private boolean mUseHadoopDefaults = false;
+
+  @Flag(name = "reset",
+      usage = "If true, ALL existing Hadoop/HBase configuration will be removed.")
+  private boolean mResetConfiguration = false;
 
   /** A reader for standard input. */
   private BufferedReader mReader;
@@ -65,11 +80,51 @@ public class ConfigurationSetupTool extends Configured implements Tool {
    *
    * @param file The file to check.
    */
-  private void checkDirectory(File file) {
+  private void checkIsDirectory(File file) {
     if (!file.exists() || !file.isDirectory()) {
       throw new IllegalArgumentException("The path " + file.toString() + " does not exist or is "
           + "not a directory");
     }
+  }
+
+  /**
+   * Checks if a file exists in a directory.
+   *
+   * @param directory The directory that may contain the file.
+   * @param fileName The name of the file to check for.
+   * @return <code>true</code> if the file exists, <code>false</code> otherwise.
+   */
+  private boolean isFileExists(File directory, String fileName) {
+    File file = new File(directory, fileName);
+    return file.exists() && file.isFile();
+  }
+
+  /**
+   * Checks whether the directory specified contains a bento-managed XML resource with the
+   * provided name. The filename used is the resource name specified prefixed with "bento-" and
+   * suffixed with ".xml".
+   *
+   * @param directory The directory to check for the resource file.
+   * @param resourceName A Hadoop XML resource name like "core-site" or "mapred-site."
+   * @return <code>true</code> if the resource exists in the specified directory,
+   *     <code>false</code> otherwise.
+   */
+  private boolean isExistingBentoResource(File directory, String resourceName) {
+    return isFileExists(directory, "bento-" + resourceName + ".xml");
+  }
+
+  /**
+   * Checks if any bento-managed Hadoop/HBase XML resources already exist in the Hadoop and HBase
+   * configuration directories.
+   *
+   * @return <code>true</code> if any of bento-core-site.xml, bento-mapred-site.xml,
+   *     bento-hdfs-site.xml, and bento-hbase-site.xml already exist, <code>false</code> otherwise.
+   */
+  private boolean isAnyBentoResourceExists() {
+    return isExistingBentoResource(mHadoopConfDir, "core-site")
+        || isExistingBentoResource(mHadoopConfDir, "mapred-site")
+        || isExistingBentoResource(mHadoopConfDir, "hdfs-site")
+        || isExistingBentoResource(mHBaseConfDir, "hbase-site");
   }
 
   /**
@@ -80,8 +135,10 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   private void setup() throws Exception {
     mHadoopConfDir = new File(mHadoopConfDirPath);
     mHBaseConfDir = new File(mHBaseConfDirPath);
-    checkDirectory(mHadoopConfDir);
-    checkDirectory(mHBaseConfDir);
+    checkIsDirectory(mHadoopConfDir);
+    checkIsDirectory(mHBaseConfDir);
+    System.out.println("Hadoop configuration directory is: " + mHadoopConfDirPath + "\n");
+    System.out.println("HBase configuration directory is: " + mHBaseConfDirPath + "\n");
     mReader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
   }
 
@@ -93,52 +150,51 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   }
 
   /**
-   * Writes Hadoop's core-site.xml to the Hadoop conf directory.
+   * Writes the bento-managed bento-core-site.xml to the Hadoop conf directory.
    *
    * @param ports The ports to use when writing the conf.
    * @throws IOException If there is an error writing the file.
    */
-  private void writeCoreSiteConf(HadoopPorts ports) throws IOException {
-    CoreSiteConfBuilder site = new CoreSiteConfBuilder()
-        .withNamenodePort(ports.getNameNodePort());
+  private void writeBentoCoreSiteConf(HadoopPorts ports) throws IOException {
+    CoreSiteConfBuilder site = new CoreSiteConfBuilder();
+    site.withNameNodePort(ports.getNameNodePort());
     site.writeToDir(mHadoopConfDir);
-
   }
 
   /**
-   * Writes Hadoop's mapred-site.xml to the Hadoop conf directory.
+   * Writes the bento-managed bento-mapred-site.xml to the Hadoop conf directory.
    *
    * @param ports The ports to use when writing the conf.
    * @throws IOException If there is an error writing the file.
    */
-  private void writeMapRedConf(HadoopPorts ports) throws IOException {
-    MapRedSiteConfBuilder site = new MapRedSiteConfBuilder()
-        .withJobTrackerPort(ports.getJobTrackerPort())
+  private void writeBentoMapRedConf(HadoopPorts ports) throws IOException {
+    MapRedSiteConfBuilder site = new MapRedSiteConfBuilder();
+    site.withJobTrackerPort(ports.getJobTrackerPort())
         .withJobTrackerUIPort(ports.getJobTrackerUIPort());
     site.writeToDir(mHadoopConfDir);
   }
 
   /**
-   * Writes Hadoop's hdfs-site.xml to the Hadoop conf directory.
+   * Writes the bento-managed bento-hdfs-site.xml to the Hadoop conf directory.
    *
    * @param ports The ports to use when writing the conf.
    * @throws IOException If there is an error writing the file.
    */
-  private void writeHdfsConf(HadoopPorts ports) throws IOException {
-    HdfsSiteConfBuilder site = new HdfsSiteConfBuilder()
-        .withNameNodeUIPort(ports.getNameNodeUIPort());
+  private void writeBentoHdfsConf(HadoopPorts ports) throws IOException {
+    HdfsSiteConfBuilder site = new HdfsSiteConfBuilder();
+    site.withNameNodeUIPort(ports.getNameNodeUIPort());
     site.writeToDir(mHadoopConfDir);
   }
 
   /**
-   * Writes HBase's hbase-site.xml to the HBase conf directory.
+   * Writes the bento-managed bento-hbase-site.xml to the HBase conf directory.
    *
    * @param ports The ports to use when writing the conf.
    * @throws IOException If there is an error writing the file.
    */
-  private void writeHBaseConf(HadoopPorts ports) throws IOException {
-    HBaseSiteConfBuilder site = new HBaseSiteConfBuilder()
-        .withMasterUIPort(ports.getHMasterUIPort())
+  private void writeBentoHBaseConf(HadoopPorts ports) throws IOException {
+    HBaseSiteConfBuilder site = new HBaseSiteConfBuilder();
+    site.withMasterUIPort(ports.getHMasterUIPort())
         .withZookeeperClientPort(ports.getZookeeperClientPort())
         .withMaxZookeeperConnections(80)
         .withRegionServerUIPort(ports.findOpenPort(60030));
@@ -146,29 +202,65 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   }
 
   /**
-   * Write all conf files to their appropriate directories.
+   * Writes all bento-managed configuration files to their appropriate directories.
    *
    * @param ports The ports to use when writing the configurations.
+   * @throws IOException If there is an error writing the files.
+   */
+  private void writeBentoConfFiles(HadoopPorts ports) throws IOException {
+    System.out.println("Writing bento-managed configuration.");
+    writeBentoCoreSiteConf(ports);
+    writeBentoMapRedConf(ports);
+    writeBentoHdfsConf(ports);
+    writeBentoHBaseConf(ports);
+  }
+
+  /**
+   * Writes a clean XML configuration file. The file is written if it does not exist or the
+   * user requested a reset.
+   *
+   * @param directory The directory the file should be written to.
+   * @param confFileName The filename of the clean configuration file to write.
    * @throws IOException If there is an error writing the file.
    */
-  private void writeConfFiles(HadoopPorts ports) throws IOException {
-    writeCoreSiteConf(ports);
-    writeMapRedConf(ports);
-    writeHdfsConf(ports);
-    writeHBaseConf(ports);
+  private void maybeWriteConfFile(File directory, String confFileName)
+      throws IOException {
+    if (!isFileExists(directory, confFileName) || mResetConfiguration) {
+      System.out.println("Writing clean " + confFileName);
+      URL resourceUrl = Resources.getResource(RESOURCES_ROOT + confFileName);
+      FileOutputStream out = null;
+      try {
+        out = new FileOutputStream(new File(directory, confFileName));
+        Resources.copy(resourceUrl, out);
+      } finally {
+        IOUtils.closeQuietly(out);
+      }
+    }
+  }
+
+  /**
+   * Writes clean Hadoop/HBase configuration files. The files are written if they are
+   * missing or the user requested a configuration reset.
+   *
+   * @throws IOException If there is an error writing the files.
+   */
+  private void maybeWriteConfFiles() throws IOException {
+    maybeWriteConfFile(mHadoopConfDir, "core-site.xml");
+    maybeWriteConfFile(mHadoopConfDir, "hdfs-site.xml");
+    maybeWriteConfFile(mHadoopConfDir, "mapred-site.xml");
+    maybeWriteConfFile(mHBaseConfDir, "hbase-site.xml");
   }
 
   /**
    * Asks the user for a port.
    *
-   * @param port A suggestion for the port.
-   * @param portDescription A description for the port.
+   * @param portSuggestion A suggestion for the port the user can accept.
+   * @param portDescription A description for the port displayed in the prompt to the user.
    * @return The user's string response.
    * @throws IOException If there is a problem reading from the console.
    */
-  private String askUserForPort(int port, String portDescription) throws IOException {
-    System.out.println("Please enter a port for " + portDescription);
-    System.out.println("or press enter to use suggestion: " + port);
+  private String askUserForPort(int portSuggestion, String portDescription) throws IOException {
+    System.out.println(portDescription + " [" + portSuggestion + "]");
     return mReader.readLine();
   }
 
@@ -176,8 +268,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
    * Prompts the user to choose a port until they enter a valid one.
    *
    * @param ports The Hadoop ports to use when checking ports.
-   * @param port A suggestion for the port the user is choosing.
-   * @param portDescription A description of the port of the user.
+   * @param port A suggestion for the port the user can accept.
+   * @param portDescription A description of the port displayed in the prompt to the user.
    * @return The port chosen by the user.
    * @throws IOException If there is a problem reading from the console.
    */
@@ -185,7 +277,7 @@ public class ConfigurationSetupTool extends Configured implements Tool {
       IOException {
     boolean takePort = false;
     do {
-      String response = askUserForPort(port, portDescription);
+      String response = askUserForPort(port, portDescription).trim();
       if (!response.isEmpty()) {
         // User did not take suggested port. Let's double check their entry.
         try {
@@ -215,7 +307,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
    * @param ports The ports to set.
    * @throws IOException If there is a problem reading input from the console.
    */
-  private void askUserAboutPorts(HadoopPorts ports) throws IOException {
+  private void askUserForPorts(HadoopPorts ports) throws IOException {
+    System.out.println("Please enter a value for each port, or press enter to use suggestion.");
     ports.setNameNodePort(askUserForPort(ports, ports.getNameNodePort(), "HDFS NameNode"));
     ports.setNameNodeUIPort(askUserForPort(ports, ports.getNameNodeUIPort(), "HDFS NameNode UI"));
     ports.setJobTrackerPort(askUserForPort(ports, ports.getJobTrackerPort(),
@@ -237,11 +330,12 @@ public class ConfigurationSetupTool extends Configured implements Tool {
     final String jobTrackerUIAddress = "http://localhost:" + ports.getJobTrackerUIPort();
     final String hMasterUIAddress = "http://localhost:" + ports.getHMasterUIPort();
 
-    System.out.println("After your clusters have (re)started, "
-        + "you can visit their web interfaces:");
+    System.out.println();
+    System.out.println("After your clusters have started, you can visit their web interfaces:");
     System.out.println("HDFS NameNode:         " + nameNodeUIAddress);
     System.out.println("MapReduce JobTracker:  " + jobTrackerUIAddress);
     System.out.println("HBase Master:          " + hMasterUIAddress);
+    System.out.println();
   }
 
   /**
@@ -258,26 +352,46 @@ public class ConfigurationSetupTool extends Configured implements Tool {
       return 1;
     }
 
-    setup();
     try {
+      setup();
+
       // Get a port helper and use it to initialize some port suggestions.
-      HadoopPorts ports = new HadoopPorts();
-      ports.initializeFromDefaults();
-      System.out.println("Checking if the Hadoop/HBase default ports are open...");
-      if (!ports.isAllDefaultsUsed()) {
-        // Get confirmation from the user on all port values if the defaults aren't open.
-        System.out.println("Some default ports were not available.");
-        askUserAboutPorts(ports);
+      HadoopPorts ports;
+      if (mUseHadoopDefaults) {
+        ports = new HadoopPorts();
       } else {
-        System.out.println("All default ports open. Using these in the Hadoop/HBase configuration "
-            + "for your cluster.");
+        ports = new HadoopPorts(mHadoopConfDir, mHBaseConfDir);
       }
-      System.out.println("Writing Hadoop configuration files to: " + mHadoopConfDirPath);
-      System.out.println("Writing HBase configuration files to: " + mHBaseConfDirPath);
-      writeConfFiles(ports);
-      System.out.println("Configuration files successfully written!");
-      System.out.println();
+
+      // Inform the user that we are checking for open ports.
+      if (!mAlwaysPrompt) {
+        if (isAnyBentoResourceExists()) {
+          System.out.println("Checking if already configured ports are still open...");
+        } else {
+          System.out.println("Checking if default Hadoop/HBase ports are open...");
+        }
+        if (!ports.isAllDefaultsUsed()) {
+          System.out.println("Some ports are in use. \n");
+        }
+      }
+
+      // Prompt for ports, or inform the user that defaults/existing configuration will be used.
+      if (!ports.isAllDefaultsUsed() || mAlwaysPrompt) {
+        // Ask the user for port values.
+        askUserForPorts(ports);
+      } else {
+        if (isAnyBentoResourceExists()) {
+          System.out.println("Already configured ports are open.");
+        } else {
+          System.out.println("Default Hadoop/HBase ports are open.");
+        }
+        System.out.println("Using these in the Hadoop/HBase configuration for your cluster.\n");
+      }
+
+      writeBentoConfFiles(ports);
+      maybeWriteConfFiles();
       tellUserAboutUIs(ports);
+      System.out.println("Configuration complete.");
     } finally {
       cleanup();
     }

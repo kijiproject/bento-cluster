@@ -69,8 +69,8 @@ import org.kiji.common.flags.FlagParser;
 public class MiniClusterTool extends Configured implements Tool {
   private static final Logger LOG = LoggerFactory.getLogger(MiniClusterTool.class);
 
-  @Flag(name="state-dir",
-      usage="The path used by bento-cluster for its state and configuration.")
+  @Flag(name = "state-dir", hidden = true,
+      usage = "The path used by bento-cluster for its state and configuration.")
   private String mClusterDir = "";
 
   /** A file containing a pid for a running cluster. */
