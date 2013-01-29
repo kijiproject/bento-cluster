@@ -85,7 +85,7 @@ public class HadoopPorts {
   /**
    * Constructs an instance that uses default values for ports taken from bento-managed Hadoop XML
    * resource files present in the specified directories. If a particular resource does not exist,
-   * or if a particular port is not set in the resources, than the conventional default for the
+   * or if a particular port is not set in the resources, then the conventional default for the
    * port will be used.
    *
    * @param hadoopConfDir A directory containing bento-managed Hadoop XML resource files
@@ -95,13 +95,9 @@ public class HadoopPorts {
    */
   public HadoopPorts(File hadoopConfDir, File hbaseConfDir) {
     // Create a Hadoop configuration populated with configuration already existing in
-    // bento-managed resources.
+    // bento-managed resources, and use it to initialize defaults and port values.
     Configuration confWithDefaults = getConfigurationWithResources(hadoopConfDir, hbaseConfDir);
-
-    // Now set defaults informed by the configuration we made.
     setDefaultsUsingConfiguration(confWithDefaults);
-
-    // Finally, initialize ports using defaults.
     initializeFromDefaults();
   }
 
@@ -113,7 +109,7 @@ public class HadoopPorts {
    * @param conf The configuration to add properties to.
    * @param resource The Hadoop XMl resource whose properties should be added to the configuration.
    */
-  private void addResourceToConfiguration(Configuration conf, File resource) {
+  private static void addResourceToConfiguration(Configuration conf, File resource) {
     try {
       FileInputStream inputStream = new FileInputStream(resource);
       // The input stream is closed as a side effect of this method.
@@ -134,7 +130,8 @@ public class HadoopPorts {
    * @return A configuration populated with properties from bento-managed Hadoop XML resources
    *     present in the specified directories.
    */
-  private Configuration getConfigurationWithResources(File hadoopConfDir, File hbaseConfDir) {
+  private static Configuration getConfigurationWithResources(File hadoopConfDir,
+      File hbaseConfDir) {
     Configuration conf = new Configuration(false);
     addResourceToConfiguration(conf,  new File(hadoopConfDir, "bento-core-site.xml"));
     addResourceToConfiguration(conf,  new File(hadoopConfDir, "bento-mapred-site.xml"));
@@ -381,4 +378,5 @@ public class HadoopPorts {
   public void setZookeeperClientPort(int port) {
     mZookeeperClientPort = port;
   }
+
 }

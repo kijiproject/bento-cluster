@@ -414,5 +414,13 @@ if $start_cluster ; then
   wait_bento_started
 fi
 
-exit $?
+# Save the exit value of the last command run (cluster config or cluster start).
+config_or_start_success=$?
+
+# If cluster config or start was successful, report on the ports in use.
+if [[ "$config_or_start_success" == "0" ]]; then
+  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS org.kiji.bento.tools.PortReportingTool
+fi
+
+exit $config_or_start_success
 

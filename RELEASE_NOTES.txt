@@ -1,6 +1,10 @@
 
 
                               Bento Cluster Release Notes
+Version 1.0.0-rc4
+  * CLUSTER-10. bento-cluster now informs user of the ports the NameNode,
+      JobTracker, and Zookeeper services are available on. User is informed
+      both when cluster starts and when cluster is configured.
 
 Version 1.0.0-rc3
   * CLUSTER-4. Allow port configuration utility to be run by the user

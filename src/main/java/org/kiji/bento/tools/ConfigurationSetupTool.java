@@ -321,24 +321,6 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   }
 
   /**
-   * Prints a message containing the web addresses of Hadoop web interfaces.
-   *
-   * @param ports The ports used to determine the web addresses.
-   */
-  private void tellUserAboutUIs(HadoopPorts ports) {
-    final String nameNodeUIAddress = "http://localhost:" + ports.getNameNodeUIPort();
-    final String jobTrackerUIAddress = "http://localhost:" + ports.getJobTrackerUIPort();
-    final String hMasterUIAddress = "http://localhost:" + ports.getHMasterUIPort();
-
-    System.out.println();
-    System.out.println("After your clusters have started, you can visit their web interfaces:");
-    System.out.println("HDFS NameNode:         " + nameNodeUIAddress);
-    System.out.println("MapReduce JobTracker:  " + jobTrackerUIAddress);
-    System.out.println("HBase Master:          " + hMasterUIAddress);
-    System.out.println();
-  }
-
-  /**
    * Runs the tool.
    *
    * @param args Command line arguments.
@@ -390,7 +372,6 @@ public class ConfigurationSetupTool extends Configured implements Tool {
 
       writeBentoConfFiles(ports);
       maybeWriteConfFiles();
-      tellUserAboutUIs(ports);
       System.out.println("Configuration complete.");
     } finally {
       cleanup();
