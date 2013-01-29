@@ -250,6 +250,6 @@ public class MiniClusterTool extends Configured implements Tool {
    * @throws Exception on error.
    */
   public static void main(String[] args) throws Exception {
-    ToolRunner.run(new MiniClusterTool(), args);
+    System.exit(ToolRunner.run(new MiniClusterTool(), args));
   }
 }

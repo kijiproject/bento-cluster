@@ -78,7 +78,7 @@ public class ConfigurationSetupTool extends Configured implements Tool {
    * Checks the specified file is a directory that exists, and throws an
    * {@link IllegalArgumentException} otherwise.
    *
-   * @param file The file to check.
+   * @param file is the file to check.
    */
   private void checkIsDirectory(File file) {
     if (!file.exists() || !file.isDirectory()) {
@@ -90,8 +90,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Checks if a file exists in a directory.
    *
-   * @param directory The directory that may contain the file.
-   * @param fileName The name of the file to check for.
+   * @param directory is the directory that may contain the file.
+   * @param fileName is the name of the file to check for.
    * @return <code>true</code> if the file exists, <code>false</code> otherwise.
    */
   private boolean isFileExists(File directory, String fileName) {
@@ -104,8 +104,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
    * provided name. The filename used is the resource name specified prefixed with "bento-" and
    * suffixed with ".xml".
    *
-   * @param directory The directory to check for the resource file.
-   * @param resourceName A Hadoop XML resource name like "core-site" or "mapred-site."
+   * @param directory is the directory to check for the resource file.
+   * @param resourceName is a Hadoop XML resource name like "core-site" or "mapred-site."
    * @return <code>true</code> if the resource exists in the specified directory,
    *     <code>false</code> otherwise.
    */
@@ -130,7 +130,7 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Setup directories used by this tool using command line arguments.
    *
-   * @throws Exception If there is a problem setting up an input stream reader for standard input.
+   * @throws Exception if there is a problem setting up an input stream reader for standard input.
    */
   private void setup() throws Exception {
     mHadoopConfDir = new File(mHadoopConfDirPath);
@@ -152,8 +152,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Writes the bento-managed bento-core-site.xml to the Hadoop conf directory.
    *
-   * @param ports The ports to use when writing the conf.
-   * @throws IOException If there is an error writing the file.
+   * @param ports holds the port choices to use when writing the conf.
+   * @throws IOException if there is an error writing the file.
    */
   private void writeBentoCoreSiteConf(HadoopPorts ports) throws IOException {
     CoreSiteConfBuilder site = new CoreSiteConfBuilder();
@@ -164,8 +164,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Writes the bento-managed bento-mapred-site.xml to the Hadoop conf directory.
    *
-   * @param ports The ports to use when writing the conf.
-   * @throws IOException If there is an error writing the file.
+   * @param ports holds the port choices to use when writing the conf.
+   * @throws IOException if there is an error writing the file.
    */
   private void writeBentoMapRedConf(HadoopPorts ports) throws IOException {
     MapRedSiteConfBuilder site = new MapRedSiteConfBuilder();
@@ -177,8 +177,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Writes the bento-managed bento-hdfs-site.xml to the Hadoop conf directory.
    *
-   * @param ports The ports to use when writing the conf.
-   * @throws IOException If there is an error writing the file.
+   * @param ports are the port choices to use when writing the conf.
+   * @throws IOException if there is an error writing the file.
    */
   private void writeBentoHdfsConf(HadoopPorts ports) throws IOException {
     HdfsSiteConfBuilder site = new HdfsSiteConfBuilder();
@@ -189,8 +189,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Writes the bento-managed bento-hbase-site.xml to the HBase conf directory.
    *
-   * @param ports The ports to use when writing the conf.
-   * @throws IOException If there is an error writing the file.
+   * @param ports are the port choices to use when writing the conf.
+   * @throws IOException if there is an error writing the file.
    */
   private void writeBentoHBaseConf(HadoopPorts ports) throws IOException {
     HBaseSiteConfBuilder site = new HBaseSiteConfBuilder();
@@ -204,8 +204,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Writes all bento-managed configuration files to their appropriate directories.
    *
-   * @param ports The ports to use when writing the configurations.
-   * @throws IOException If there is an error writing the files.
+   * @param ports are the port choices to use when writing the configurations.
+   * @throws IOException if there is an error writing the files.
    */
   private void writeBentoConfFiles(HadoopPorts ports) throws IOException {
     System.out.println("Writing bento-managed configuration.");
@@ -219,9 +219,9 @@ public class ConfigurationSetupTool extends Configured implements Tool {
    * Writes a clean XML configuration file. The file is written if it does not exist or the
    * user requested a reset.
    *
-   * @param directory The directory the file should be written to.
-   * @param confFileName The filename of the clean configuration file to write.
-   * @throws IOException If there is an error writing the file.
+   * @param directory is the directory the file should be written to.
+   * @param confFileName is the filename of the clean configuration file to write.
+   * @throws IOException if there is an error writing the file.
    */
   private void maybeWriteConfFile(File directory, String confFileName)
       throws IOException {
@@ -242,7 +242,7 @@ public class ConfigurationSetupTool extends Configured implements Tool {
    * Writes clean Hadoop/HBase configuration files. The files are written if they are
    * missing or the user requested a configuration reset.
    *
-   * @throws IOException If there is an error writing the files.
+   * @throws IOException if there is an error writing the files.
    */
   private void maybeWriteConfFiles() throws IOException {
     maybeWriteConfFile(mHadoopConfDir, "core-site.xml");
@@ -254,12 +254,13 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Asks the user for a port.
    *
-   * @param portSuggestion A suggestion for the port the user can accept.
-   * @param portDescription A description for the port displayed in the prompt to the user.
-   * @return The user's string response.
-   * @throws IOException If there is a problem reading from the console.
+   * @param portSuggestion is a suggestion for the port the user can accept.
+   * @param portDescription is a description for the port displayed in the prompt to the user.
+   * @return the user's string response.
+   * @throws IOException if there is a problem reading from the console.
    */
-  private String askUserForPort(int portSuggestion, String portDescription) throws IOException {
+  private String askUserForPort(Integer portSuggestion, String portDescription)
+      throws IOException {
     System.out.println(portDescription + " [" + portSuggestion + "]");
     return mReader.readLine();
   }
@@ -267,13 +268,13 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Prompts the user to choose a port until they enter a valid one.
    *
-   * @param ports The Hadoop ports to use when checking ports.
-   * @param port A suggestion for the port the user can accept.
-   * @param portDescription A description of the port displayed in the prompt to the user.
-   * @return The port chosen by the user.
-   * @throws IOException If there is a problem reading from the console.
+   * @param ports is the port utility used to check and find ports.
+   * @param port is a suggestion for the port the user can accept.
+   * @param portDescription is a description of the port displayed in the prompt to the user.
+   * @return the port chosen by the user.
+   * @throws IOException if there is a problem reading from the console.
    */
-  private int askUserForPort(HadoopPorts ports, int port, String portDescription) throws
+  private Integer askUserForPort(HadoopPorts ports, Integer port, String portDescription) throws
       IOException {
     boolean takePort = false;
     do {
@@ -282,8 +283,8 @@ public class ConfigurationSetupTool extends Configured implements Tool {
         // User did not take suggested port. Let's double check their entry.
         try {
           port = Integer.parseInt(response);
-          int suggestedPort = ports.findOpenPort(port);
-          if (suggestedPort != port) {
+          Integer suggestedPort = ports.findOpenPort(port);
+          if (!suggestedPort.equals(port)) {
             // the user did not choose an open port. continue with a suggestion chosen starting
             // from the port asked for.
             port = suggestedPort;
@@ -304,28 +305,36 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Asks the user for confirmation on the Hadoop ports to use.
    *
-   * @param ports The ports to set.
-   * @throws IOException If there is a problem reading input from the console.
+   * @param ports is the port utility used to check and find ports.
+   * @throws IOException if there is a problem reading input from the console.
    */
   private void askUserForPorts(HadoopPorts ports) throws IOException {
     System.out.println("Please enter a value for each port, or press enter to use suggestion.");
-    ports.setNameNodePort(askUserForPort(ports, ports.getNameNodePort(), "HDFS NameNode"));
-    ports.setNameNodeUIPort(askUserForPort(ports, ports.getNameNodeUIPort(), "HDFS NameNode UI"));
-    ports.setJobTrackerPort(askUserForPort(ports, ports.getJobTrackerPort(),
-        "MapReduce JobTracker"));
-    ports.setJobTrackerUIPort(askUserForPort(ports, ports.getJobTrackerUIPort(),
-        "MapReduce JobTracker UI"));
-    ports.setHMasterUIPort(askUserForPort(ports, ports.getHMasterUIPort(), "HBase Master UI"));
-    ports.setZookeeperClientPort(askUserForPort(ports, ports.getZookeeperClientPort(),
-        "Zookeeper client port"));
+    ports.setNameNodePort(askUserForPort(ports,
+        ports.findOpenPort(ports.getNameNodePortDefault()), "HDFS NameNode"));
+
+    ports.setNameNodeUIPort(askUserForPort(ports,
+        ports.findOpenPort(ports.getNameNodeUiPortDefault()), "HDFS NameNode UI"));
+
+    ports.setJobTrackerPort(askUserForPort(ports,
+        ports.findOpenPort(ports.getJobTrackerPortDefault()), "MapReduce JobTracker"));
+
+    ports.setJobTrackerUIPort(askUserForPort(ports,
+        ports.findOpenPort(ports.getJobTrackerUIPortDefault()), "MapReduce JobTracker UI"));
+
+    ports.setHMasterUIPort(askUserForPort(ports,
+        ports.findOpenPort(ports.getHMasterUIPortDefault()), "HBase Master UI"));
+
+    ports.setZookeeperClientPort(askUserForPort(ports,
+        ports.findOpenPort(ports.getZookeeperClientPortDefault()), "Zookeeper client port"));
   }
 
   /**
    * Runs the tool.
    *
-   * @param args Command line arguments.
-   * @return Exit status.
-   * @throws Exception If there is an error.
+   * @param args are the command-line arguments.
+   * @return an exit status.
+   * @throws Exception if there is an error while running the tool.
    */
   @Override
   public int run(String[] args) throws Exception {
@@ -360,6 +369,7 @@ public class ConfigurationSetupTool extends Configured implements Tool {
       // Prompt for ports, or inform the user that defaults/existing configuration will be used.
       if (!ports.isAllDefaultsUsed() || mAlwaysPrompt) {
         // Ask the user for port values.
+        ports.clearPortChoices();
         askUserForPorts(ports);
       } else {
         if (isAnyBentoResourceExists()) {
@@ -382,10 +392,10 @@ public class ConfigurationSetupTool extends Configured implements Tool {
   /**
    * Java program entry point.
    *
-   * @param args Command-line arguments.
-   * @throws Exception on error.
+   * @param args are the command-line arguments.
+   * @throws Exception if there is an error while running the tool.
    */
   public static void main(String[] args) throws Exception {
-    ToolRunner.run(new ConfigurationSetupTool(), args);
+    System.exit(ToolRunner.run(new ConfigurationSetupTool(), args));
   }
 }

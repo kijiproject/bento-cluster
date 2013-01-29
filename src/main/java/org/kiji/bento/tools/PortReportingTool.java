@@ -115,10 +115,10 @@ public final class PortReportingTool extends Configured implements Tool {
   /**
    * Java program entry point.
    *
-   * @param args Command-line arguments.
+   * @param args are the command-line arguments.
    * @throws Exception on error.
    */
   public static void main(String[] args) throws Exception {
-    ToolRunner.run(new PortReportingTool(), args);
+    System.exit(ToolRunner.run(new PortReportingTool(), args));
   }
 }

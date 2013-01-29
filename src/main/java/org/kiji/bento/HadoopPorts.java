@@ -37,42 +37,42 @@ public class HadoopPorts {
   private static final Logger LOG = LoggerFactory.getLogger(HadoopPorts.class);
 
   /** The conventional port value for the NameNode. */
-  public static final int NAME_NODE_PORT_CONVENTION = 8020;
+  public static final Integer NAME_NODE_PORT_CONVENTION = 8020;
   /** The conventional port value for the NameNode UI. */
-  public static final int NAME_NODE_UI_PORT_CONVENTION = 50070;
+  public static final Integer NAME_NODE_UI_PORT_CONVENTION = 50070;
   /** The conventional port value for the JobTracker. */
-  public static final int JOB_TRACKER_PORT_CONVENTION = 8021;
+  public static final Integer JOB_TRACKER_PORT_CONVENTION = 8021;
   /** The conventional port value for the JobTracker UI. */
-  public static final int JOB_TRACKER_UI_PORT_CONVENTION = 50030;
+  public static final Integer JOB_TRACKER_UI_PORT_CONVENTION = 50030;
   /** The conventional port value for the HMaster UI. */
-  public static final int HMASTER_UI_PORT_CONVENTION = 60010;
+  public static final Integer HMASTER_UI_PORT_CONVENTION = 60010;
   /** The conventional port value for the HMaster UI. */
-  public static final int ZOOKEEPER_CLIENT_PORT_CONVENTION = 2181;
+  public static final Integer ZOOKEEPER_CLIENT_PORT_CONVENTION = 2181;
 
   /** The default to use for the NameNode port. */
-  private int mNameNodePortDefault;
+  private Integer mNameNodePortDefault = null;
   /** The port for the NameNode. */
-  private int mNameNodePort;
+  private Integer mNameNodePort = null;
   /** The default to use for the NameNode UI port. */
-  private int mNameNodeUIPortDefault;
+  private Integer mNameNodeUIPortDefault = null;
   /** The port for the NameNode UI. */
-  private int mNameNodeUIPort;
+  private Integer mNameNodeUIPort = null;
   /** The default to use for the JobTracker port. */
-  private int mJTPortDefault;
+  private Integer mJTPortDefault = null;
   /** The port for the JobTracker. */
-  private int mJTPort;
+  private Integer mJTPort = null;
   /** The default port to use for the JobTracker UI. */
-  private int mJTUIPortDefault;
+  private Integer mJTUIPortDefault = null;
   /** The port for the JobTracker UI. */
-  private int mJTUIPort;
+  private Integer mJTUIPort = null;
   /** The default to use for the HMaster UI port. */
-  private int mHMasterUIPortDefault;
+  private Integer mHMasterUIPortDefault = null;
   /** The port for the HMaster UI. */
-  private int mHMasterUIPort;
+  private Integer mHMasterUIPort = null;
   /** The default to use for the Zookeeper client port. */
-  private int mZookeeperClientPortDefault;
+  private Integer mZookeeperClientPortDefault = null;
   /** The Zookeeper client port. */
-  private int mZookeeperClientPort;
+  private Integer mZookeeperClientPort = null;
 
   /**
    * Constructs an instance that uses default values for ports taken from Hadoop/HBase conventions.
@@ -83,22 +83,32 @@ public class HadoopPorts {
   }
 
   /**
+   * Constructs an instance that uses default values for ports taken from the specified
+   * configuration. If a particular port is not set in the configuration,
+   * then the conventional default for the port will be used.
+   *
+   * @param confWithDefaults is the configuration used to get values for ports.
+   */
+  public HadoopPorts(Configuration confWithDefaults) {
+    setDefaultsUsingConfiguration(confWithDefaults);
+    initializeFromDefaults();
+  }
+
+  /**
    * Constructs an instance that uses default values for ports taken from bento-managed Hadoop XML
    * resource files present in the specified directories. If a particular resource does not exist,
    * or if a particular port is not set in the resources, then the conventional default for the
    * port will be used.
    *
-   * @param hadoopConfDir A directory containing bento-managed Hadoop XML resource files
+   * @param hadoopConfDir is a directory containing bento-managed Hadoop XML resource files
    *     (bento-core-site.xml, bento-mapred-site.xml, etc.).
-   * @param hbaseConfDir  A directory containing bento-managed HBase XML resource files
+   * @param hbaseConfDir  is a directory containing bento-managed HBase XML resource files
    *     (bento-hbase-site.xml).
    */
   public HadoopPorts(File hadoopConfDir, File hbaseConfDir) {
     // Create a Hadoop configuration populated with configuration already existing in
     // bento-managed resources, and use it to initialize defaults and port values.
-    Configuration confWithDefaults = getConfigurationWithResources(hadoopConfDir, hbaseConfDir);
-    setDefaultsUsingConfiguration(confWithDefaults);
-    initializeFromDefaults();
+    this(getConfigurationWithResources(hadoopConfDir, hbaseConfDir));
   }
 
   /**
@@ -106,8 +116,9 @@ public class HadoopPorts {
    * configuration. If the resource specified does not exist, no new properties will be added to
    * the configuration.
    *
-   * @param conf The configuration to add properties to.
-   * @param resource The Hadoop XMl resource whose properties should be added to the configuration.
+   * @param conf is the configuration to add properties to.
+   * @param resource is the Hadoop XMl resource whose properties should be added to the
+   *     configuration.
    */
   private static void addResourceToConfiguration(Configuration conf, File resource) {
     try {
@@ -125,9 +136,9 @@ public class HadoopPorts {
    * bento-mapred-site.xml, bento-hdfs-site.xml, and bento-hbase-site.xml present in the specified
    * directories.
    *
-   * @param hadoopConfDir The Hadoop configuration directory.
-   * @param hbaseConfDir The HBase configuration directory.
-   * @return A configuration populated with properties from bento-managed Hadoop XML resources
+   * @param hadoopConfDir is the Hadoop configuration directory.
+   * @param hbaseConfDir is the HBase configuration directory.
+   * @return a configuration populated with properties from bento-managed Hadoop XML resources
    *     present in the specified directories.
    */
   private static Configuration getConfigurationWithResources(File hadoopConfDir,
@@ -157,7 +168,7 @@ public class HadoopPorts {
    * property containing a port is not present in the provided configuration,
    * than the conventional default is used.
    *
-   * @param confWithDefaults A configuration possibly containing default values for ports.
+   * @param confWithDefaults is a configuration possibly containing default values for ports.
    */
   private void setDefaultsUsingConfiguration(Configuration confWithDefaults) {
     mNameNodePortDefault = confWithDefaults.getSocketAddr(
@@ -188,34 +199,70 @@ public class HadoopPorts {
    *     <code>false</code> otherwise.
    */
   public boolean isAllDefaultsUsed() {
-    return mNameNodePort == mNameNodePortDefault
-        && mNameNodeUIPort == mNameNodeUIPortDefault
-        && mJTPort == mJTPortDefault
-        && mJTUIPort == mJTUIPort
-        && mHMasterUIPort == mHMasterUIPortDefault
-        && mZookeeperClientPort == mZookeeperClientPortDefault;
+    return mNameNodePortDefault.equals(mNameNodePort)
+        && mNameNodeUIPortDefault.equals(mNameNodeUIPort)
+        && mJTPortDefault.equals(mJTPort)
+        && mJTUIPortDefault.equals(mJTUIPort)
+        && mHMasterUIPortDefault.equals(mHMasterUIPort)
+        && mZookeeperClientPortDefault.equals(mZookeeperClientPort);
+  }
+
+  /**
+   * Prints a message to the user about a port's default value being taken.
+   *
+   * @param portName is the name of the port whose default is taken.
+   * @param portDefault is the default value for the port that is in use.
+   */
+  private void reportOnTakenDefault(String portName, Integer portDefault) {
+    String output = String.format("The %s port %d is taken.", portName, portDefault);
+    System.out.println(output);
+
+  }
+
+  /**
+   * Prints a message to the user reporting on which needed ports have used defaults.
+   */
+  public void reportOnTakenDefaults() {
+    if (!isOpen(mNameNodePortDefault)) {
+      reportOnTakenDefault("NameNode", mNameNodePortDefault);
+    }
+    if (!isOpen(mNameNodeUIPortDefault)) {
+      reportOnTakenDefault("NameNode UI", mNameNodeUIPortDefault);
+    }
+    if (!isOpen(mJTPortDefault)) {
+      reportOnTakenDefault("JobTracker", mJTPortDefault);
+    }
+    if (!isOpen(mJTUIPortDefault)) {
+      reportOnTakenDefault("JobTracker UI", mJTUIPortDefault);
+    }
+    if (!isOpen(mHMasterUIPortDefault)) {
+      reportOnTakenDefault("HMaster UI", mHMasterUIPortDefault);
+    }
+    if (!isOpen(mZookeeperClientPortDefault)) {
+      reportOnTakenDefault("Zookeeper Client", mZookeeperClientPortDefault);
+    }
   }
 
   /**
    * Checks if a port has already been chosen as one of the Hadoop ports.
    *
-   * @param port The port to check.
+   * @param port is the port to check for being chosen.
    * @return <code>true</code> if the port has been chosen as one of the Hadoop ports,
    *     <code>false</code> otherwise.
    */
-  private boolean isChosen(int port) {
-    return port == mNameNodePort
-        || port == mNameNodeUIPort
-        || port == mJTPort
-        || port == mJTUIPort
-        || port == mHMasterUIPort
-        || port == mZookeeperClientPort;
+  private boolean isChosen(Integer port) {
+    return port.equals(mNameNodePort)
+        || port.equals(mNameNodeUIPort)
+        || port.equals(mJTPort)
+        || port.equals(mJTUIPort)
+        || port.equals(mHMasterUIPort)
+        || port.equals(mZookeeperClientPort);
   }
 
   /**
    * Close a server socket, catching and logging any exceptions.
    *
-   * @param ss The server socket to close.
+   * @param ss is the server socket to close.
    */
   private static void closeQuietly(ServerSocket ss) {
     if (null != ss) {
@@ -231,10 +278,10 @@ public class HadoopPorts {
   /**
    * Check if the specified port is open.
    *
-   * @param port The port to check.
+   * @param port is the port to check for being open.
    * @return <code>true</code> if the port is open, <code>false</code> otherwise.
    */
-  public static boolean isOpen(int port) {
+  public static boolean isOpen(Integer port) {
     ServerSocket ss = null;
     try {
       ss = new ServerSocket(port);
@@ -251,19 +298,18 @@ public class HadoopPorts {
   /**
    * Find an available port.
    *
-   * @param startPort the starting port to check.
+   * @param startPort is the port from which the search is started.
    * @return an open port number.
-   * @throws IllegalArgumentException if it can't find an open port.
+   * @throws IllegalArgumentException if an open port is not found by the search.
    */
-  public int findOpenPort(int startPort) {
+  public Integer findOpenPort(Integer startPort) {
     if (startPort < 1024 || startPort > 65534) {
       throw new IllegalArgumentException("Invalid start port: " + startPort);
     }
 
-    for (int port = startPort; port < 65534; port++) {
-      // If the port is open and is the start port, or the port is open and has not been chosen,
-      // return it.
-      if (isOpen(port) && (port == startPort || !isChosen(port))) {
+    for (Integer port = startPort; port < 65534; port++) {
+      // If the port is open and not chosen, return it.
+      if (isOpen(port) && !isChosen(port)) {
         return port;
       }
     }
@@ -283,100 +329,153 @@ public class HadoopPorts {
   }
 
   /**
-   * @return The name node port.
+   * @return the NameNode port.
    */
-  public int getNameNodePort() {
+  public Integer getNameNodePort() {
     return mNameNodePort;
   }
 
   /**
-   * Sets the name node port.
-   *
-   * @param port The port to use.
+   * @return the default value for the NameNode port.
    */
-  public void setNameNodePort(int port) {
+  public Integer getNameNodePortDefault() {
+    return mNameNodePortDefault;
+  }
+
+  /**
+   * Sets the NameNode port.
+   *
+   * @param port is the port to use.
+   */
+  public void setNameNodePort(Integer port) {
     mNameNodePort = port;
   }
 
   /**
    *
-   * @return The name node UI port.
+   * @return the NameNode UI port.
    */
-  public int getNameNodeUIPort() {
+  public Integer getNameNodeUIPort() {
     return mNameNodeUIPort;
   }
 
   /**
-   * Sets the name node UI port.
-   *
-   * @param port The port to use.
+   * @return the default value for the NameNode UI port.
    */
-  public void setNameNodeUIPort(int port) {
+  public Integer getNameNodeUiPortDefault() {
+    return mNameNodeUIPortDefault;
+  }
+
+  /**
+   * Sets the NameNode UI port.
+   *
+   * @param port is the port to use.
+   */
+  public void setNameNodeUIPort(Integer port) {
     mNameNodeUIPort = port;
   }
 
   /**
-   * @return The job tracker port.
+   * @return the JobTracker port.
    */
-  public int getJobTrackerPort() {
+  public Integer getJobTrackerPort() {
     return mJTPort;
   }
 
   /**
-   * Sets the job tracker port.
-   *
-   * @param port The port to use.
+   * @return the default value for the JobTracker port.
    */
-  public void setJobTrackerPort(int port) {
+  public Integer getJobTrackerPortDefault() {
+    return mJTPortDefault;
+  }
+
+  /**
+   * Sets the JobTracker port.
+   *
+   * @param port is the port to use.
+   */
+  public void setJobTrackerPort(Integer port) {
     mJTPort = port;
   }
 
   /**
-   * @return The job tracker UI port.
+   * @return the JobTracker UI port.
    */
-  public int getJobTrackerUIPort() {
+  public Integer getJobTrackerUIPort() {
     return mJTUIPort;
   }
 
   /**
-   * Sets the job tracker UI port.
-   *
-   * @param port The port to use.
+   * @return the default value for the JobTracker port.
    */
-  public void setJobTrackerUIPort(int port) {
+  public Integer getJobTrackerUIPortDefault() {
+    return mJTUIPortDefault;
+  }
+
+  /**
+   * Sets the JobTracker UI port.
+   *
+   * @param port is the port to use.
+   */
+  public void setJobTrackerUIPort(Integer port) {
     mJTUIPort = port;
   }
 
   /**
-   * @return The HBase master UI port;
+   * @return the HMaster UI port;
    */
-  public int getHMasterUIPort() {
+  public Integer getHMasterUIPort() {
     return mHMasterUIPort;
+  }
+
+  /**
+   * @return the default value for the HMaster UI port.
+   */
+  public Integer getHMasterUIPortDefault() {
+    return mHMasterUIPortDefault;
   }
 
   /**
    * Sets the HBase master UI port.
    *
-   * @param port The port to use.
+   * @param port is the port to use.
    */
-  public void setHMasterUIPort(int port) {
+  public void setHMasterUIPort(Integer port) {
     mHMasterUIPort = port;
   }
 
   /**
-   * @return The Zookeeper client port.
+   * @return the Zookeeper client port.
    */
-  public int getZookeeperClientPort() {
+  public Integer getZookeeperClientPort() {
     return mZookeeperClientPort;
+  }
+
+  /**
+   * @return the default value for the Zookeeper client port.
+   */
+  public Integer getZookeeperClientPortDefault() {
+    return mZookeeperClientPortDefault;
   }
 
   /**
    * Sets the Zookeeper client port.
    *
-   * @param port The port to use.
+   * @param port is the port to use.
    */
-  public void setZookeeperClientPort(int port) {
+  public void setZookeeperClientPort(Integer port) {
     mZookeeperClientPort = port;
   }
 
+  /**
+   * Sets all chosen points to <code>null</code>, thereby clearing any existing port configuration.
+   */
+  public void clearPortChoices() {
+    mNameNodePort = null;
+    mNameNodeUIPort = null;
+    mJTPort = null;
+    mJTUIPort = null;
+    mHMasterUIPort = null;
+    mZookeeperClientPort = null;
+  }
 }
