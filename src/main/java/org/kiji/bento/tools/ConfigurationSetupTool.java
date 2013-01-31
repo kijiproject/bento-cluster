@@ -45,7 +45,7 @@ import org.kiji.common.flags.FlagParser;
  * A tool to help the user create bento-managed Hadoop XML resource files with correct ports and
  * settings.
  */
-public class ConfigurationSetupTool extends Configured implements Tool {
+public final class ConfigurationSetupTool extends Configured implements Tool {
   private static final String RESOURCES_ROOT = "org/kiji/bento/";
 
   /** A flag used to pass the HBase configuration directory. */

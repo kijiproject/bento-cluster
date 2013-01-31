@@ -66,7 +66,7 @@ import org.kiji.common.flags.FlagParser;
  * behavior of {@link java.lang.management.RuntimeMXBean#getName() RuntimeMXBean.getName()}
  * and may not be portable on non-UNIX systems.</p>
  */
-public class MiniClusterTool extends Configured implements Tool {
+public final class MiniClusterTool extends Configured implements Tool {
   private static final Logger LOG = LoggerFactory.getLogger(MiniClusterTool.class);
 
   @Flag(name = "state-dir", hidden = true,

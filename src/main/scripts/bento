@@ -215,6 +215,17 @@ function mutate_classpath () {
     set +f
 }
 
+function check_host_configuration() {
+  # Check if the IP address of the local machine can be resolved.
+  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS \
+    org.kiji.bento.tools.DNSCheckingTool "--hostname=$(hostname)"
+
+  if [[ "$?" != "0" ]]; then
+    echo "Local DNS check failed.  Please resolve and try again."
+    exit 1
+  fi
+}
+
 # This function waits until bento-cluster's PID file is present. The PID file is written by
 # the MiniClusterTool after clusters have been started.
 function wait_bento_started() {
@@ -385,6 +396,7 @@ if $run_config ; then
     ln -s ${HBASE_HOME}/conf/hbase-site.xml ${CLUSTER_CONF_DIR}/hbase-site.xml
   fi
   echo
+  check_host_configuration
 fi
 
 # Start the mini cluster.
@@ -396,8 +408,10 @@ if $start_cluster ; then
     exit 1
   fi
 
+  check_host_configuration
+
   # Check if bento-cluster's ports are open.
-  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS org.kiji.bento.tools.PortCheckingTool
+  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS org.kiji.bento.tools.PortCheckingTool 
   if [[ "$?" != "0" ]]; then
     echo "Port check failed. Not starting bento-cluster."
     exit 1
