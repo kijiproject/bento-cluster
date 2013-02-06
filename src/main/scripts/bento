@@ -247,6 +247,25 @@ function wait_bento_started() {
   fi
 }
 
+function status_bento() {
+  printf "%s" "bento-cluster: "
+  if [ -f ${BENTO_PID_FILE} ]; then
+      PID=$(cat ${BENTO_PID_FILE})
+      if [ -z "$(ps axo pid,command| grep ${PID} | grep -v grep)" ]; then
+          echo "Process dead but pidfile exists."
+          echo "You can remove it here: ${BENTO_PID_FILE}."
+          return 1
+      else
+          echo "Running as ${PID}."
+          return 0
+      fi
+  else
+      echo "Not running."
+      return 1
+  fi
+
+}
+
 function kill_bento() {
   # Kill a running bento-cluster process from its pid file.
   if [ ! -f "${BENTO_PID_FILE}" ]; then
@@ -356,6 +375,10 @@ case $command in
   config)
     run_config=true
     found_cmd=true
+    ;;
+  status)
+    status_bento
+    exit $?
     ;;
   classpath)
     echo "$bento_cp"
