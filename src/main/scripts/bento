@@ -217,12 +217,16 @@ function mutate_classpath () {
 
 function check_host_configuration() {
   # Check if the IP address of the local machine can be resolved.
-  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS \
-    org.kiji.bento.tools.DNSCheckingTool "--hostname=$(hostname)"
+  # Skip this check on Mac OS X as it does not behave correctly on Mac systems,
+  # and the check is primarily made to detect a problem on Ubuntu.
+  if [ `uname` != "Darwin" ]; then
+    java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS \
+      org.kiji.bento.tools.DNSCheckingTool "--hostname=$(hostname)"
 
-  if [[ "$?" != "0" ]]; then
-    echo "Local DNS check failed.  Please resolve and try again."
-    exit 1
+    if [[ "$?" != "0" ]]; then
+      echo "Local DNS check failed.  Please resolve and try again."
+      exit 1
+    fi
   fi
 }
 
@@ -434,7 +438,7 @@ if $start_cluster ; then
   check_host_configuration
 
   # Check if bento-cluster's ports are open.
-  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS org.kiji.bento.tools.PortCheckingTool 
+  java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS org.kiji.bento.tools.PortCheckingTool
   if [[ "$?" != "0" ]]; then
     echo "Port check failed. Not starting bento-cluster."
     exit 1

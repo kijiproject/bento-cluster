@@ -2,6 +2,7 @@
 
                               Bento Cluster Release Notes
 Version 1.0.0-rc4
+  * CLUSTER-19. The DNS check from CLUSTER-7 is not run on Mac OS X machines.
   * CLUSTER-18. bento-cluster now includes a status command.
   * CLUSTER-7. bento-cluster now checks if there are DNS problems(common to
       the default configuration on Ubuntu systems) on starting.
