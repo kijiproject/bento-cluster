@@ -373,6 +373,12 @@ case $command in
     found_cmd=true
     ;;
   stop)
+    # If running in a Kiji BentoBox, stop the upgrade checking daemon.
+    upgrade_daemon_stop_script="${bin}/upgrade-daemon-stop.sh"
+    if [ -f "${upgrade_daemon_stop_script}" -a -x "${upgrade_daemon_stop_script}" ]; then
+      "${upgrade_daemon_stop_script}"
+    fi
+    # Kill cluster daemon.
     kill_bento
     exit $?
     ;;
@@ -401,6 +407,17 @@ export BENTO_JAVA_OPTS
 
 if [ ! -z "$JAVA_LIBRARY_PATH" ]; then
   java_opts="$java_opts -Djava.library.path=$JAVA_LIBRARY_PATH"
+fi
+
+# If it does not exist, create the cluster state dir.
+$(create_missing_dir "${STATE_DIR}")
+
+# Before running the command, generate a UUID to use with the upgrade check-in server,
+# if we are running inside a Kiji BentoBox. We know we're running in a Kiji BentoBox
+# if the UUID generation script exists.
+uuid_script="${bin}/generate-uuid.sh"
+if [ -f "${uuid_script}" -a -x "${uuid_script}" ]; then
+  "${uuid_script}"
 fi
 
 # If required or requested, run the port configuration tool.
@@ -444,11 +461,17 @@ if $start_cluster ; then
     exit 1
   fi
 
+  # If we're running inside a Kiji BentoBox, start a background daemon that checks for
+  # BentoBox upgrades.
+  upgrade_daemon_start_script="${bin}/upgrade-daemon-start.sh"
+  if [ -f "${upgrade_daemon_start_script}" -a -x "${upgrade_daemon_start_script}" ]; then
+    "${upgrade_daemon_start_script}"
+  fi
+
   echo "Starting bento-cluster..."
 
   class=org.kiji.bento.tools.MiniClusterTool
   class_args="--state-dir=${STATE_DIR}"
-  $(create_missing_dir "${STATE_DIR}")
   cd "${STATE_DIR}"
 
   nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
