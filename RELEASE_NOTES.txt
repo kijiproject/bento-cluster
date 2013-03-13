@@ -1,6 +1,11 @@
 
 
                               Bento Cluster Release Notes
+
+Version 1.0.0
+  * BENTO-10. Add import tool. Run 'bento import --src=</path/to/old/bentobox>' to
+      copy data from an existing BentoBox into this instance.
+
 Version 1.0.0-rc4
   * BENTO-15. Include scripts to track last checkin time for updates.
   * CLUSTER-19. The DNS check from CLUSTER-7 is not run on Mac OS X machines.

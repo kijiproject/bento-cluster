@@ -101,6 +101,7 @@ function print_tool_usage() {
   echo "  stop          - Stops HDFS, MapReduce, and HBase clusters managed by bento-cluster."
   echo "  config        - Configures the ports used by bento-cluster."
   echo "  classpath     - Prints the classpath used to run bento-cluster."
+  echo "  import        - Imports data from an existing BentoBox or bento-cluster."
   echo
   echo "FLAGS"
   echo "  The config command can take some command-line flags.  Use bento config --help"
@@ -252,12 +253,22 @@ function wait_bento_started() {
 }
 
 function status_bento() {
+  # Report the bento's status (running or stopped) on stdout and via exit code
+  # (status=0 for running, 1 for not running).
+
+  pidfile="$1"
+  if [ -z "$pidfile" ]; then
+    echo "Error: No PID file specified as argument to status_bento()."
+    return 1
+  fi
+
   printf "%s" "bento-cluster: "
-  if [ -f ${BENTO_PID_FILE} ]; then
-      PID=$(cat ${BENTO_PID_FILE})
+
+  if [ -f "$pidfile" ]; then
+      PID=$(cat "$pidfile")
       if [ -z "$(ps axo pid,command| grep ${PID} | grep -v grep)" ]; then
           echo "Process dead but pidfile exists."
-          echo "You can remove it here: ${BENTO_PID_FILE}."
+          echo "You can remove it here: ${pidfile}."
           return 1
       else
           echo "Running as ${PID}."
@@ -267,7 +278,121 @@ function status_bento() {
       echo "Not running."
       return 1
   fi
+}
 
+function import_tool() {
+  # Run the import script to import the cluster state from an existing instance.
+  # This tool exits with status 0 on success, 1 on error.
+  # This tool takes as its sole argument the path to the source BentoBox or
+  # bento-cluster instance.
+
+  srcarg="$1"
+
+  # Parse the first argument.
+  # The 'cut(1)' command is specified by POSIX.1.
+  if [ -z "$srcarg" ]; then
+    # No arguments: print usage.
+    echo "Usage: bento import --src=</path/to/previous/bentobox>"
+    echo ""
+    echo "Import the data from an existing BentoBox into this instance."
+    return 1
+  elif [ `echo "$srcarg" | cut -c 1-6` == "--src=" ]; then
+    # $srcbox defines the path to the source BentoBox or bento-cluster.
+    srcbox=`echo "$srcarg" | cut -c 7-`
+  else
+    # The argument is --foo=... and we only support --src.
+    echo "The only argument allowed is 'bento import --src=<path>'."
+    return 1
+  fi
+
+  if [ -z "$srcbox" ]; then
+    echo "Must specify a source BentoBox path."
+    echo "bento import --src=/path/to/source/bentobox"
+    return 1
+  fi
+
+  echo "Importing from $srcbox"
+  if [ ! -d "$srcbox" ]; then
+    echo "Error: Cannot find source BentoBox."
+    return 1
+  fi
+
+  # Search for the actual state dir.
+  if [ -d "$srcbox/cluster/state" ]; then
+    # It's nested in a BentoBox.
+    statedir="$srcbox/cluster/state"
+  elif [ -d "$srcbox/state" ]; then
+    # Standalone bento cluster.
+    statedir="$srcbox/state"
+  fi
+
+  if [ -z "$statedir" ]; then
+    echo "Could not find any state directory in the existing BentoBox."
+    echo "No data to import."
+    return 1
+  fi
+
+  # Check to see if the source cluster's running.
+  status_bento "$statedir/bento-cluster.pid" &> /dev/null
+  srcstart=$?
+  if [ "$srcstart" == 0 ]; then
+    echo ""
+    echo "Source cluster is running. Stop it with:"
+    echo "  source $srcbox/bin/kiji-env.sh"
+    echo "  bento stop"
+    return 1
+  fi
+
+  # Check to see if the destination cluster's running.
+  status_bento "${BENTO_PID_FILE}" &> /dev/null
+  deststart=$?
+  if [ "$deststart" == 0 ]; then
+    echo ""
+    echo "Destination cluster is running."
+    echo "Stop it with the 'bento stop' command first."
+    return 1
+  fi
+
+  if [ ! -d "$BENTO_CLUSTER_HOME" ]; then
+    # Sanity check the destination cluster exists; this shouldn't be triggered.
+    echo "The destination BentoBox (this one?) doesn't seem to exist."
+    echo "Cannot find directory for BENTO_CLUSTER_HOME: $BENTO_CLUSTER_HOME"
+    return 1
+  fi
+
+  dest="$BENTO_CLUSTER_HOME/state"
+  if [ -d "$dest" ]; then
+    echo "Destination directory exists:"
+    echo "$dest"
+    echo ""
+    echo "It must be removed or moved aside before importing from another instance."
+    echo ""
+    echo "Shall I delete all destination cluster data? (Type 'yes' or 'no')"
+    read -e -p "> " rmconf
+    if [ "$rmconf" == "yes" ]; then
+      rm -rf "$dest"
+    elif [ "$rmconf" == "no" ]; then
+      echo "Not removing destination data. Canceling import."
+      return 1
+    else
+      echo "Must type 'yes' to proceed (or remove destination data yourself first)."
+      return 1
+    fi
+  fi
+
+  # Ensure that src and dest are different.
+  if [ `resolve_symlink "$statedir"` == `resolve_symlink "$dest"` ]; then
+    echo "Error: Source and destination clusters are the same."
+    return 1
+  fi
+
+  # Everything seems in order. Perform the copy.
+  cp -a "$statedir" "$dest"
+  cpok=$?
+  if [ "$cpok" == 0 ]; then
+    echo "Import complete! Type 'bento start' to start the new minicluster."
+  fi
+  return $cpok # Success.
 }
 
 function kill_bento() {
@@ -387,7 +512,11 @@ case $command in
     found_cmd=true
     ;;
   status)
-    status_bento
+    status_bento "${BENTO_PID_FILE}"
+    exit $?
+    ;;
+  import)
+    import_tool "$@"
     exit $?
     ;;
   classpath)
