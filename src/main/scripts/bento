@@ -539,7 +539,7 @@ if [ ! -z "$JAVA_LIBRARY_PATH" ]; then
 fi
 
 # If it does not exist, create the cluster state dir.
-$(create_missing_dir "${STATE_DIR}")
+create_missing_dir "${STATE_DIR}"
 
 # Before running the command, generate a UUID to use with the upgrade check-in server,
 # if we are running inside a Kiji BentoBox. We know we're running in a Kiji BentoBox
@@ -562,7 +562,7 @@ if $run_config ; then
   class_args="$@ --hadoop-conf-dir=${HADOOP_HOME}/conf --hbase-conf-dir=${HBASE_HOME}/conf"
   java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args
   if [ ! -d "${CLUSTER_CONF_DIR}" ]; then
-    $(create_missing_dir "${CLUSTER_CONF_DIR}")
+    create_missing_dir "${CLUSTER_CONF_DIR}"
     ln -s ${HADOOP_HOME}/conf/core-site.xml ${CLUSTER_CONF_DIR}/core-site.xml
     ln -s ${HADOOP_HOME}/conf/mapred-site.xml ${CLUSTER_CONF_DIR}/mapred-site.xml
     ln -s ${HADOOP_HOME}/conf/hdfs-site.xml ${CLUSTER_CONF_DIR}/hdfs-site.xml
