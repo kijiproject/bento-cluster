@@ -24,6 +24,15 @@
 #   bash> $BENTO_CLUSTER_HOME/bin/bento help
 #
 
+# Canonicalize a path into an absolute, symlink free path.
+#
+# Portable implementation of the GNU coreutils "readlink -f path".
+# The '-f' option of readlink does not exist on MacOS, for instance.
+#
+# Args:
+#   param $1: path to canonicalize.
+# Returns:
+#   Prints the canonicalized path on stdout.
 function resolve_symlink() {
   TARGET_FILE=$1
 
