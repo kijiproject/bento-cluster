@@ -3,6 +3,10 @@
                               Bento Cluster Release Notes
 
 Version 1.0.0
+  * CLUSTER-22. DNS check no longer requires localhost and $(hostame) to resolve
+      to the same IP address.
+  * CLUSTER-25. Add environment variable BENTO_LOG_ENABLE=1 to capture bento logs
+      to the bento log file: "$BENTO_CLUSTER_HOME/state/bento-cluster.log".
   * BENTO-10. Add import tool. Run 'bento import --src=</path/to/old/bentobox>' to
       copy data from an existing BentoBox into this instance.
 

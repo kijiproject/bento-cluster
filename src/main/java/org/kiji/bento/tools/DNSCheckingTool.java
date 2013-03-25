@@ -68,7 +68,6 @@ public final class DNSCheckingTool extends Configured implements Tool {
       return 1;
     }
 
-    boolean unmatchingAddresses = false;
     boolean hostnameNotResolvable = false;
     boolean localhostNotResolvable = false;
 
@@ -93,12 +92,14 @@ public final class DNSCheckingTool extends Configured implements Tool {
       hostnameNotResolvable = true;
     }
 
-    // Do the addresses resolved match?
+    // Is the IP address of the hostname working for an HBase mini-cluster?
+    boolean workingHostnameAddress = false;
     if (!hostnameNotResolvable && !localhostNotResolvable) {
-      unmatchingAddresses = !localhostAddress.equals(hostnameAddress);
+      workingHostnameAddress =
+          !hostnameAddress.isLoopbackAddress() || localhostAddress.equals(hostnameAddress);
     }
 
-    if (hostnameNotResolvable || localhostNotResolvable || unmatchingAddresses) {
+    if (hostnameNotResolvable || localhostNotResolvable || !workingHostnameAddress) {
       if (hostnameNotResolvable) {
         System.err.println("Your machine's configured hostname " + mHostName + " cannot be");
         System.err.println("resolved to an IP address. Check /etc/hosts and ensure there is an");
@@ -113,18 +114,23 @@ public final class DNSCheckingTool extends Configured implements Tool {
 
         System.err.println("127.0.0.1\tlocalhost\n");
       }
-      if (unmatchingAddresses) {
-        System.err.println("localhost and your machine's hostname " + mHostName + " do not");
-        System.err.println("resolve to the same IP address (common on Ubuntu machines). Check");
-        System.err.println("that /etc/hosts maps both localhost and " + mHostName + " to");
-        System.err.println("127.0.0.1.\n");
-        System.err.println("For example, /etc/hosts may contain:\n");
+      if (!workingHostnameAddress) {
+        System.err.printf(
+            "Your machine's hostname '%s' resolves to a loopback address [%s] "
+            + "that is different from the address of 'localhost' [%s].%n",
+            mHostName, hostnameAddress.getHostAddress(), localhostAddress.getHostAddress());
+        System.err.println("This configuration does not work with the HBase mini-cluster.");
+        System.err.println("Please, edit /etc/hosts and ensure one of the following:");
+        System.err.printf(
+            " - 'localhost' and your machine's hostname '%s' both resolve to the same address;%n",
+            mHostName);
+        System.err.printf(
+            " - your machine's hostname '%s' does not resolve to a loopback address "
+            + "(loopback addresses look like 127.x.y.z, for example 127.0.1.1).%n",
+            mHostName);
 
-        System.err.println("127.0.0.1\tlocalhost");
-        System.err.println("127.0.1.1\t" + mHostName + "\n");
-
-        System.err.println("and should be edited to instead contain:\n");
-        System.err.println("127.0.0.1\tlocalhost " + mHostName + "\n");
+        System.err.println("For example, you may edit /etc/hosts with the following line:");
+        System.err.println("127.0.0.1\tlocalhost " + mHostName);
       }
       return 1;
     }
