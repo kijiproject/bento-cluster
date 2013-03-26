@@ -89,6 +89,10 @@ STATE_DIR="$BENTO_CLUSTER_HOME/state"
 # Locations of log and pid files.
 BENTO_LOG_FILE="${STATE_DIR}/bento-cluster.log"
 BENTO_PID_FILE="${STATE_DIR}/bento-cluster.pid"
+
+# By default, Bento logs are discarded
+BENTO_LOG_ENABLE=${BENTO_LOG_ENABLE:-0}
+
 # A directory containing symlinks to the -site.xml files used by bento-cluster's
 # Hadoop clusters.
 CLUSTER_CONF_DIR="${BENTO_CLUSTER_HOME}/cluster-conf"
@@ -140,6 +144,15 @@ function print_env_usage() {
   echo "                      property). Note the bento script will always pass the native libraries"
   echo "                      included with bento-cluster's Hadoop distribution to the JVM. By"
   echo "                      default JAVA_LIBRARY_PATH is empty."
+  echo
+  echo "  BENTO_LOG_ENABLE    Set to 1 to capture the bento-cluster log messages into a log file."
+  echo "                      By default, bento-cluster logs are discarded."
+  echo "                      Note that bento-cluster features NO automatic log rolling, and that"
+  echo "                      the bento log file may grow to hard-drive-filling sizes if the cluster"
+  echo "                      emits many log messages."
+  echo "                      In particular, suspending the local machine while bento-cluster is"
+  echo "                      running will result in a high rate of error messages being written"
+  echo "                      to the bento log file once the machine resumes."
 }
 
 if [ -z $1 ]; then
@@ -612,16 +625,12 @@ if $start_cluster ; then
   class_args="--state-dir=${STATE_DIR}"
   cd "${STATE_DIR}"
 
+  if [ ${BENTO_LOG_ENABLE} -ne 1 ]; then
+    # Logging is disabled, discard logs through /dev/null:
+    BENTO_LOG_FILE="/dev/null"
+  fi
   nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
-      &> /dev/null &
-  # Comment-out the two lines above and uncomment the two lines below to write cluster
-  # logs to the file specified by $BENTO_LOG_FILE. Note that bento-cluster features NO
-  # automatic log rolling, and that $BENTO_LOG_FILE may grow to hard-drive-filling sizes
-  # if the clusters emit many log messages. In particular, suspending the local machine
-  # while bento-cluster is running will result in a high rate of error messages being
-  # written to $BENTO_LOG_FILE once the machine resumes.
-  #nohup java -cp "$bento_cp" $java_opts $BENTO_JAVA_OPTS $class $class_args "$@" \
-  #    &> ${BENTO_LOG_FILE} &
+      &> "${BENTO_LOG_FILE}" &
   wait_bento_started
 fi
 
