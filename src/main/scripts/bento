@@ -115,6 +115,7 @@ function print_tool_usage() {
   echo "  config        - Configures the ports used by bento-cluster."
   echo "  classpath     - Prints the classpath used to run bento-cluster."
   echo "  import        - Imports data from an existing BentoBox or bento-cluster."
+  echo "  upgrade       - Downloads the latest BentoBox and upgrades this instance."
   echo
   echo "FLAGS"
   echo "  The config command can take some command-line flags.  Use bento config --help"
@@ -299,6 +300,31 @@ function status_bento() {
   else
       echo "Not running."
       return 1
+  fi
+}
+
+function upgrade_tool() {
+  # Launch the upgrade
+  status_bento "${BENTO_PID_FILE}" &> /dev/null
+  running=$?
+  if [ "$running" == 0 ]; then
+    echo ""
+    echo "This BentoBox cluster is running."
+    echo "Stop it with the 'bento stop' command first."
+    return 1
+  fi
+
+  # If this is in a BentoBox, it should be at BENTO_HOME/cluster/bin. Look
+  # for BENTO_HOME/bin/upgrade-installer.sh and run it if available.
+  upgrade_tool="${bin}/upgrade-installer.sh"
+  if [ -x "$upgrade_tool" -a -f "$upgrade_tool" ]; then
+    "$upgrade_tool" "$@"
+    return $?
+  else
+    echo ""
+    echo "This 'bento' script does not seem to be inside a BentoBox."
+    echo "Cannot run an automatic upgrade. See www.kiji.org for downloads."
+    return 1
   fi
 }
 
@@ -539,6 +565,10 @@ case $command in
     ;;
   import)
     import_tool "$@"
+    exit $?
+    ;;
+  upgrade)
+    upgrade_tool "$@"
     exit $?
     ;;
   classpath)
