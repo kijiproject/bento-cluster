@@ -22,6 +22,8 @@ package org.kiji.bento;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
@@ -224,7 +226,7 @@ class BentoHBaseTestingUtility extends HBaseTestingUtility {
    * An extension of {@link MiniMRCluster} that avoids overwriting the value of the job tracker
    * info port in the configuration used to start the job tracker.
    */
-  class BentoMiniMRCluster extends MiniMRCluster {
+  static class BentoMiniMRCluster extends MiniMRCluster {
     /**
      * Constructs a new instance.
      *
@@ -239,7 +241,7 @@ class BentoHBaseTestingUtility extends HBaseTestingUtility {
       // Despite passing "0" for the job tracker and task tracker ports here, their values
       // will still be taken from the configuration, due to our changes to createJobConf.
       // If either of these are not set in the configuration, they will start on a random port.
-      super(0, 0, numServers, namenode, numDir, null, null, null,
+      super(0, 0, numServers, namenode, numDir, null, getTaskTrackerHostNames(), null,
           new JobConf(conf));
     }
 
@@ -253,6 +255,22 @@ class BentoHBaseTestingUtility extends HBaseTestingUtility {
     @Override
     public JobConf createJobConf(JobConf conf) {
       return conf;
+    }
+
+    /**
+     * Gets the hostnames of the tasktrackers in this mini cluster.
+     * Since there is only one task tracker, this local one, this will
+     * return a single-element array with the hostname according to
+     * the machine, usually "localhost".
+     *
+     * @return An array of the tasktracker hostnames.
+     */
+    private static String[] getTaskTrackerHostNames() {
+      try {
+        return new String[] { InetAddress.getLocalHost().getHostName() };
+      } catch (UnknownHostException e) {
+        return new String[] { "localhost" };
+      }
     }
   }
 }

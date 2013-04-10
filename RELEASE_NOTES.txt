@@ -2,6 +2,9 @@
 
                               Bento Cluster Release Notes
 
+Version 1.0.1
+  * CLUSTER-27. Fix links to view task tracker logs.
+
 Version 1.0.0
   * CLUSTER-22. DNS check no longer requires localhost and $(hostame) to resolve
       to the same IP address.
