@@ -113,3 +113,8 @@ fail or behave unexpectedly if the machine is suspended. Users who
 encounter problems after a suspend should stop and then start
 bento-cluster to recover.
 
+The HDFS and MapReduce HTTP status pages exported by the NameNode
+(`http://localhost:50070`) and JobTracker (`http://localhost:50030`)
+are only accessible from localhost. Attempts to view these status
+pages from a machine other than the one the bento-cluster is running
+on will fail.
