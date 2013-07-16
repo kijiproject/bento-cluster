@@ -2,6 +2,9 @@
 
                               Bento Cluster Release Notes
 
+Version 1.2.0
+  * CLUSTER-28. Upgrade to CDH 4.3.0.
+
 Version 1.1.0
   * Upgrade to CDH 4.2 (HBase 0.94).
   * CLUSTER-27. Fix links to view task tracker logs.
