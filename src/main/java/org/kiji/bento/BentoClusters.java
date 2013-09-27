@@ -20,11 +20,15 @@
 package org.kiji.bento;
 
 import java.io.File;
+import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,13 +103,77 @@ public class BentoClusters {
   public void startClusters() throws Exception {
     // Start a mini zookeeper cluster on a client-configured port, and use that zookeeper cluster
     // in the testing util.
-    final MiniZooKeeperCluster zkCluster = new MiniZooKeeperCluster(getConfiguration());
+    final BentoMiniZooKeeperCluster zkCluster = new BentoMiniZooKeeperCluster(getConfiguration());
     zkCluster.setDefaultClientPort(
         getConfiguration().getInt("hbase.zookeeper.property.clientPort", 2181));
-    zkCluster.startup(mZookeeperDir);
+    // Start the zookeeper cluster and clear stale zookeeper data.
+    try {
+      zkCluster.startup(mZookeeperDir);
+      clearStaleZooKeeperNodes();
+    } catch (Exception e) {
+      // If there's a problem starting zookeeper or clearing the stale zookeeper nodes, we need to
+      // shutdown the zookeeper cluster and rethrow the exception since startup has failed.
+      zkCluster.shutdown();
+      throw e;
+    }
     mTestingUtil.setZkCluster(zkCluster);
-    mMiniCluster = mTestingUtil.startMiniCluster();
-    mTestingUtil.startMiniMapReduceCluster(1);
+    try {
+      mMiniCluster = mTestingUtil.startMiniCluster();
+      mTestingUtil.startMiniMapReduceCluster(1);
+    } catch (Exception e) {
+      // If there's a problem starting the mini clusters, we should make sure everything is
+      // shutdown and fail.
+      mTestingUtil.shutdownMiniCluster();
+      throw e;
+    }
+  }
+
+  /**
+   * Deletes any ZooKeeper nodes persisted since the last run, but which must be removed for
+   * proper start-up of BentoCluster's HBase.
+   *
+   * @throws IOException if there is a problem connecting to ZooKeeper,
+   *    or executing the delete operation.
+   */
+  private void clearStaleZooKeeperNodes() throws IOException {
+    // Get a connection to ZooKeeper.
+    final Abortable abortable = new Abortable() {
+      private boolean mAborted = false;
+
+      @Override
+      public void abort(String why, Throwable e) {
+        mAborted = true;
+        throw new RuntimeException(why, e);
+      }
+
+      @Override
+      public boolean isAborted() {
+        return mAborted;
+      }
+    };
+
+    ZooKeeperWatcher watcher = null;
+    try {
+      watcher = new ZooKeeperWatcher(getConfiguration(),
+          "Connection used to clear stale ZooKeeper nodes on bento-cluster startup.", abortable);
+      // Clear the node containing the address of the HBase master. We do this to prevent a bug
+      // on bento-cluster startup, in which bento-cluster waits for this non-existent master to
+      // startup.
+      if (ZKUtil.checkExists(watcher, watcher.masterAddressZNode) >= 0) {
+        ZKUtil.deleteNode(watcher, watcher.masterAddressZNode);
+      }
+    } catch (IOException e) {
+      throw new IOException("There was a problem opening a connection to the ZooKeeper used by "
+          + "bento-cluster.");
+    } catch (KeeperException e) {
+      throw new IOException("There was a problem deleting the ZNode containing the address of the "
+          + "HBase master.", e);
+    } finally {
+      if (null != watcher) {
+        watcher.close();
+      }
+    }
+
   }
 
   /**

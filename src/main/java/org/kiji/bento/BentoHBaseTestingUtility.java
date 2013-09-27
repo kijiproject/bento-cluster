@@ -19,13 +19,12 @@
 
 package org.kiji.bento;
 
+import static org.kiji.bento.AbstractionBarrierBulldozer.*;
+
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -36,6 +35,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MiniMRCluster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * <p>This class provides mini hadoop and hbase clusters that can be executed in a process on a
@@ -179,34 +179,6 @@ class BentoHBaseTestingUtility extends HBaseTestingUtility {
     LOG.info("Mini mapreduce cluster started");
     // Save the mrCluster private field of the parent class.
     setField(HBaseTestingUtility.class, this, "mrCluster", mrCluster);
-  }
-
-  /**
-   * Uses reflection to set a field in an instance of a class. Any exceptions thrown during this
-   * process are converted to {@link RuntimeException}.
-   *
-   * @param clazz The class of the instance whose field will be set.
-   * @param instance The class instance.
-   * @param fieldName The name of the field to set.
-   * @param value The value for the field.
-   * @param <T> The type of the class whose field will be set.
-   */
-  private <T> void setField(Class<T> clazz, Object instance, String fieldName,
-      Object value) {
-    try {
-      final Field field = clazz.getDeclaredField(fieldName);
-      AccessController.doPrivileged(new PrivilegedAction<Object>() {
-        @Override
-        public Object run() {
-          field.setAccessible(true);
-          return null;
-        }
-      });
-      field.set(instance, value);
-    } catch (Exception e) {
-      throw new RuntimeException("There was a problem using reflection while configuring the "
-          + "mini cluster.", e);
-    }
   }
 
   /**
