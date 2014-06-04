@@ -1,46 +1,60 @@
 #!/usr/bin/env bash
+
+# (c) Copyright 2012 WibiData, Inc.
 #
-#   (c) Copyright 2012 WibiData, Inc.
-#  
-#   See the NOTICE file distributed with this work for additional
-#   information regarding copyright ownership.
-#  
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#  
-#       http://www.apache.org/licenses/LICENSE-2.0
-#  
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
+# See the NOTICE file distributed with this work for additional
+# information regarding copyright ownership.
 #
-#   This script allows developers to run the bento script in the development distribution built 
-#   under the project's target directory. If no built development distribution exists, maven
-#   will be used to build one.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-bin=`dirname $0`
+# ------------------------------------------------------------------------------
 
-release_dir=`ls -d -1 ${bin}/../target/bento-*-release/bento-*/ | sort -r | head -1`
-if [ ! -d "$release_dir" ]; then
-  echo "No target directory found, so building bento with 'mvn package' first..."
-  mvn package
-  release_dir=`ls -d -1 ${bin}/../target/bento-*-release/bento-*/ | sort -r | head -1`
-fi
-release=`cd ${release_dir} && pwd`
+# This script allows developers to run the bento script in the development
+# distribution built under the project's target directory.  If no built
+# development distribution exists, maven will be used to build one.
 
-# If $BENTO_HOME is set to the development base, retarget it to
-# the actual release dir.
-if [ ! -z "$BENTO_HOME" ]; then
-  canonical_bento_home=`cd ${BENTO_HOME} && pwd`
-  canonical_parent=`cd ${bin}/../ && pwd`
+# ------------------------------------------------------------------------------
 
-  if [ "${canonical_bento_home}" == "${canonical_parent}" ]; then
-    # Set BENTO_HOME to the release dir.
-    export BENTO_HOME="${release}"
-  fi
+set -o nounset   # Fail when referencing undefined variables
+set -o errexit   # Script exits on the first error
+set -o pipefail  # Pipeline status failure if any command fails
+if [[ ! -z "${DEBUG:-}" ]]; then
+  source=$(basename "${BASH_SOURCE}")
+  PS4="# ${source}":'${LINENO}: '
+  set -x
 fi
 
-exec $release/bin/bento "$@"
+# ------------------------------------------------------------------------------
+
+# Root of the Bento project
+bento_root=$(dirname "$(dirname "${BASH_SOURCE}")")
+bento_root=$(cd "${bento_root}"; pwd -P)
+
+if ! release_dir=$(\
+    ls -d -1 "${bento_root}"/target/bento-*-release/bento-*/ \
+    | sort -r | head -1); then
+  echo "No target/ directory found."
+  echo "Building BentoCluster..."
+  mvn clean package
+  release_dir=$(\
+      ls -d -1 "${bento_root}"/target/bento-*-release/bento-*/ \
+      | sort -r | head -1)
+fi
+
+export BENTO_HOME="${release_dir}"
+if [[ ! -d "${BENTO_HOME}" ]]; then
+  echo "Error building BentoCluster in BENTO_HOME=${BENTO_HOME}"
+  exit 1
+fi
+
+exec "${BENTO_HOME}/bin/bento" "$@"

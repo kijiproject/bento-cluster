@@ -57,7 +57,7 @@
         <exclude>*~</exclude>
         <exclude>*.swp</exclude>
       </excludes>
-      <filtered>true</filtered>
+      <filtered>false</filtered>
     </fileSet>
 
     <!-- put bento-cluster configuration files into the distribution. -->
@@ -70,7 +70,9 @@
         <exclude>*~</exclude>
         <exclude>*.swp</exclude>
       </excludes>
-      <filtered>false</filtered>
+
+      <!-- Evaluate and replace Maven variables in conf/bento-cluster.version -->
+      <filtered>true</filtered>
     </fileSet>
 
   </fileSets>

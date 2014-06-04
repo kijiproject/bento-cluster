@@ -1,0 +1,4 @@
+# Warning : this file is processed (filtered) by the Maven assembly plugin.
+bento_cluster_version=${project.version}
+hadoop_version=${hadoop.version}
+hbase_version=${hbase.version}
